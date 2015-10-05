@@ -6,3 +6,4 @@
 *.so
 *.pcm
 *.root
+merge.sh
