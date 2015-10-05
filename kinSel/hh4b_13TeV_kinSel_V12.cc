@@ -37,13 +37,11 @@ int binCSV = 8;
 int binEta = 4;
 
 // environment
-//------------------
 int finalIndex = 1; //0 MCTruth, 1 matrix, 2 CSV, 3 minMass
-//std::string rootfolder= "/lustre/cmswork/dallosso/hh2bbbb/non-resonant/event_generation/CMSSW_7_2_2_patch2/src/nores_ntuples13TeV/Ntuples_L1y1C0/Loop_2/";
+std::string rootfolder="/lustre/cmswork/dallosso/hh2bbbb/non-resonant/event_generation/CMSSW_7_2_2_patch2/src/nores_ntuples13TeV/Ntuples_L1y1C0/Loop_2/";
 std::string utilsFld="../utils/";
 std::string dataFld="../data/";
 std::string matrixFld="jetsMatch_matrix/";
-std::string subdataFld=dataFld+"vhbb_heppy_V13/";
 
 typedef struct{
   double CMVA;
@@ -270,13 +268,10 @@ TH2F *h2_HCSV_HRL_mass = new TH2F("h2_HCSV_HRL_mass", " mh mh; <m_{H_{RL}}> (GeV
 //-------------
 //   MAIN
 //-------------
-void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isSignalMC = true, bool draw = true)
+void hh4b_nonres_jetMatch(std::string sample, std::string opt, int maxEvents =0, bool isSignalMC = true, bool draw = true)
 {
-
-  std::string inputfilename;  
-  //std::ifstream inf(filesList);
-  //getline(inf,inputfilename);
-  inputfilename = subdataFld+"tree_"+sample+".root"; 
+  std::string inputfilename;
+  inputfilename = rootfolder+"tree_"+sample+".root"; 
 
   TFile * f = new TFile(inputfilename.c_str());
   f->cd();	
