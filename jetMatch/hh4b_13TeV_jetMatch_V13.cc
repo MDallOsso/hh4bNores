@@ -1,25 +1,35 @@
-// Code for non resonant HH->bbbb in CMS Run2 
-// Step1 - KINEMATIC SELECTION
-//  Author: Martino Dall'Osso
-//   thanks Souvik Das (Univ. of Florida) & Caterina Vernieri (FNAL) 
-//    Sept 21th, 2015
-//----------------------------------------------------------------
+//staring from C.Vernieri Feb 24th, 2015
+// May 26th, 2015
+//last mod - 02 Sett 2015
+// to study jet matching methods
 
 #include <TH1F.h>
+#include <string>
+#include <sstream>
+#include <cmath>
 #include <TH2F.h>
+#include <TH3F.h>
+#include <TROOT.h>
 #include <TFile.h>
 #include <TTree.h>
+#include <TSystem.h>
 #include <TChain.h>
 #include <TCanvas.h>
 #include <TLorentzVector.h>
+#include <TLegend.h>
+#include <iostream>
+#include <stdlib.h>
+#include <stdio.h>
 #include <iostream>
 #include <fstream>
 #include <iomanip>
+#include <vector>
+#include <utility> 
 
 double pi=3.14159265;
 
-// selection parameters:
-bool yesTrgA = true;
+//bool doQCD = false;
+bool yesTrgA = true; //debug
 bool yesTrgB = true;
 double Jet_pt_cut_low = 20.; //30.;
 double deltaRCut = 0.5; //0.5
@@ -31,20 +41,24 @@ double H_mass = 115.0; //for withinRegion
 double dijetM_cut_low = 100.;
 double dijetM_cut_high = 150.;
 
+//-------------------
 // matrix parameters
 int binPt = 10;
 int binCSV = 8;
 int binEta = 4;
+//-------------------
 
 // environment
 //------------------
 int finalIndex = 2; //0 MCTruth, 1 matrix, 2 CSV, 3 minMass
-//std::string rootfolder= "/lustre/cmswork/dallosso/hh2bbbb/non-resonant/event_generation/CMSSW_7_2_2_patch2/src/nores_ntuples13TeV/Ntuples_L1y1C0/Loop_2/";
 std::string utilsFld="../utils/";
 std::string dataFld="../data/";
 std::string plotsFld="plots/";
 std::string matrixFld="jetsMatch_matrix/";
 std::string subdataFld=dataFld+"vhbb_heppy_V13/";
+
+//"/lustre/cmswork/dallosso/hh2bbbb/non-resonant/event_generation/CMSSW_7_4_7_patch1/src/VHbbAnalysis/Heppy/test/Loop_2/";
+//"/lustre/cmswork/dallosso/hh2bbbb/non-resonant/event_generation/CMSSW_7_2_2_patch2/src/nores_ntuples13TeV/Ntuples_L1y1C0/Loop_2/";
 
 typedef struct{
   double CMVA;
@@ -125,7 +139,7 @@ TH1F *h_nJets_90=new TH1F("h_nJets_90", "# Central Jets with p_{T}> 90 GeV;  n",
 //  TH1F *h_nCand_true=new TH1F("h_nCand_true", "# HH candidates if true", 20, 0., 20.);	
 TH1F *h_nPV=new TH1F("h_nPV", "# of Primary Vertices; nPV", 10, 0., 10.);
 TH1F *h_nPV_weighted=new TH1F("h_nPV_weighted", "# of Primary Vertices after Reweighting; nPV", 50, 0., 50.);
-TH1F *h_HLT_HH4b=new TH1F("h_HLT_HH4b", "h_HLT_HH4b; Quad - Double", 2, 0, 2);
+//TH1F *h_HLT_HH4b=new TH1F("h_HLT_HH4b", "h_HLT_HH4b; Quad - Double", 2, 0, 2);
 TH1F *h_HLT_HH4ball=new TH1F("h_HLT_HH4ball", "h_HLT_HH4ball; Quad - Double", 1, 0, 1);
 
 TH1F *h_Jet1_pT=new TH1F("h_Jet1_pT", "Jet1_pT; p_{T} (GeV/c)", 100, 0., 900.);
@@ -251,12 +265,14 @@ TH1F *h_Jet4all_Deta3=new TH1F("h_Jet4all_Deta3", "h_Jet4all_Deta3; 3rd-4th jets
 TH1F *h_M_true=new TH1F("h_M_true", "<mass> true; <m_{H}> (GeV/c^{2})", 150, 0., 300.);
 TH1F *h_M_matrix=new TH1F("h_M_matrix", "<mass> matrix; <m_{H}> (GeV/c^{2})", 150, 0., 300.);
 TH1F *h_M_csv=new TH1F("h_M_csv", "<mass> csv; <m_{H}> (GeV/c^{2})", 150, 0., 300.);
+TH1F *h_M_minmass=new TH1F("h_M_minmass", "<mass> minmass; <m_{H}> (GeV/c^{2})", 150, 0., 300.);
 TH1F *h_M_highpt=new TH1F("h_M_highpt", "<mass> highpt; <m_{H}> (GeV/c^{2})", 150, 0., 300.);
 TH1F *h_M_matrixCSV=new TH1F("h_M_matrixCSV", "<mass> matrixCSV; <m_{H}> (GeV/c^{2})", 150, 0., 300.);
 
 TH1F *h_HH_mass_tr = new TH1F("h_HH_mass_tr"," HH mass; m_{HH} (GeV/c^{2})" , 100, 0., 1500.); 
 TH1F *h_HH_mass_matr = new TH1F("h_HH_mass_matr"," HH mass; m_{HH} (GeV/c^{2})" , 100, 0., 1500.); 
 TH1F *h_HH_mass_csv = new TH1F("h_HH_mass_csv"," HH mass; m_{HH} (GeV/c^{2})" , 100, 0., 1500.); 
+TH1F *h_HH_mass_minm = new TH1F("h_HH_mass_minm"," HH mass; m_{HH} (GeV/c^{2})" , 100, 0., 1500.); 
 
 TH2F *h_CSVmass_no4thCSV = new TH2F("h_CSVmass_no4thCSV", " no4thCSV; <m_{H}> (GeV/c^{2}); CSV", 300, 0., 600., 200, 0., 1.);
 TH2F *h_CSVmass_4thCSV = new TH2F("h_CSVmass_4thCSV", " 4thCSV; <m_{H}> (GeV/c^{2}); CSV", 300, 0., 600., 200, 0., 1.);
@@ -269,27 +285,19 @@ TH2F *h2_HCSV_HRL_mass = new TH2F("h2_HCSV_HRL_mass", " mh mh; <m_{H_{RL}}> (GeV
 //  TH2F *h_R_pTCSV = new TH2F("h_R_pTCSV", " R; pT (GeV/c); CSV)", 100, 0., 500., 50, 0., 1.);
 //  TH2F *h_R_CSVeta = new TH2F("h_R_CSVeta", " R; CSV; eta)", 50, 0., 1., 100, -4., 4.);
 
-//new new histos
-TH1F *h_Jets_CSV_all=new TH1F("h_Jets_CSV_all", "Jets_CSV_all; all jets CSV", 50, 0., 1.);
-
-
-
 //-------------
 //   MAIN
 //-------------
-void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isData = false, bool isSignalMC = true, bool draw = false)
+void hh4b_nonres_jetMatch(std::string sample, std::string opt, bool readmatrix=false, double maxEvents =0)
 {
-
-  std::string inputfilename;  
-  //std::ifstream inf(filesList);
-  //getline(inf,inputfilename);
+  std::string inputfilename;
   inputfilename = subdataFld+"tree_"+sample+".root"; 
 
   TFile * f = new TFile(inputfilename.c_str());
   f->cd();	
   TTree *tree=(TTree*)f->Get("tree");
   std::cout<<"Opened input file "<<inputfilename<<std::endl;
-   // Book variables
+  // Book variables
   ULong64_t evt;
   unsigned int run, lumi;
   int nJet, nGenH, nPV, nGenBfHafterISR;    
@@ -304,21 +312,13 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
   float weightPU, Vtype_, met_pt,met_eta,met_phi,met_mass;
   float HLT_HH4bAll, HLT_BIT_QuadTriple, HLT_BIT_QuadDouble, HLT_BIT_DoubleTriple, HLT_BIT_DoubleDouble; 
 
-  //Retrieve variables
+  //Retrieve variables -- MC only!!
   //--------------------
   tree->SetBranchAddress("nprimaryVertices", &(nPV));
   tree->SetBranchAddress("Vtype", &(Vtype_));
   tree->SetBranchAddress("evt",&evt); 
   tree->SetBranchAddress("run",&run);
 
-  if(isData){
-    tree->SetBranchAddress("HLT_BIT_HLT_QuadJet45_TripleBTagCSV0p67_v",&HLT_BIT_QuadTriple);          //new
-    tree->SetBranchAddress("HLT_BIT_HLT_QuadJet45_DoubleBTagCSV0p67_v",&HLT_BIT_QuadDouble);          //new
-    tree->SetBranchAddress("HLT_BIT_HLT_DoubleJet90_Double30_TripleBTagCSV0p67_v",&HLT_BIT_DoubleTriple);          //new
-    tree->SetBranchAddress("HLT_BIT_HLT_DoubleJet90_Double30_DoubleBTagCSV0p67_v",&HLT_BIT_DoubleDouble);          //new
-    tree->SetBranchAddress("HLT_HH4bAll",&HLT_HH4bAll);          //new
-  }
-  else {
     tree->SetBranchAddress("puWeight", &(weightPU)); //added
     tree->SetBranchAddress("HLT_BIT_HLT_QuadJet45_TripleCSV0p5_v",&HLT_BIT_QuadTriple);          //new
     tree->SetBranchAddress("HLT_BIT_HLT_QuadJet45_DoubleCSV0p5_v",&HLT_BIT_QuadDouble);          //new
@@ -357,7 +357,6 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
     tree->SetBranchAddress("GenBQuarkFromHafterISR_eta",&GenBfHafterISR_eta);
     tree->SetBranchAddress("GenBQuarkFromHafterISR_phi",&GenBfHafterISR_phi);
     tree->SetBranchAddress("GenBQuarkFromHafterISR_mass",&GenBfHafterISR_mass);  
-  }
 
   tree->SetBranchAddress("nJet",&nJet);              
   tree->SetBranchAddress("Jet_id",&Jet_id);            
@@ -382,7 +381,7 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
   tree->SetBranchAddress("met_pt",&met_pt);            
   tree->SetBranchAddress("met_eta",&met_eta);           
   tree->SetBranchAddress("met_phi",&met_phi);           
-  tree->SetBranchAddress("met_mass",&met_mass);       
+  tree->SetBranchAddress("met_mass",&met_mass);     
   //std::cout<<Jet_pt[0]<<"  "<<Jet_pt[1]<<"  "<<Jet_pt[2]<< "   "<<std::endl;
 
   //Histos options
@@ -390,9 +389,7 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
   h_nPV_weighted->Sumw2();
 
   //output file
-  std::string eve = "";
-  if(maxEvents > 0) eve = "_" + to_string(maxEvents);
-  std::string outfilename=dataFld+"tree_S1_"+sample+eve+".root";
+  std::string outfilename="tree_jetMatch_"+sample+".root";
   TFile *outfile=new TFile(outfilename.c_str(), "recreate");
   TTree *outtree=tree->CloneTree(0);
   int H1jet1_i, H1jet2_i;
@@ -427,7 +424,8 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
   double nM[binPt][binCSV][binEta];
   double nA[binPt][binCSV][binEta];
   double R[binPt][binCSV][binEta];
-  int nRmaxOk = 0, nMCTruth =0, nCSVOk =0, nMatrCSVOk=0;
+  int nRmaxOk = 0, nSigmaMaxOk =0,  nMCTruth =0, nCSVOk =0, nMinMassOk =0, nMatrCSVOk=0;
+  double sigmaR[binPt][binCSV][binEta];
   double Rave = 9999;;
 
   for(int ipT=0; ipT<binPt; ipT++){
@@ -435,14 +433,15 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
       for(int ieta=0; ieta<binEta; ieta++){
         nM[ipT][iCSV][ieta] = 0;
         nA[ipT][iCSV][ieta] = 0;
+        sigmaR[ipT][iCSV][ieta] = 0;
       }
     }
   }
   //read matrix and calculate R
-  ifstream inmatrix;
-  std::string fn = utilsFld+matrixFld+"nMnA_"+sample+"_"+opt+".asc";
-  inmatrix.open(fn);
-  if (inmatrix) {
+  if(readmatrix){
+    ifstream inmatrix;
+    inmatrix.open(utilsFld+matrixFld+"nMnA_"+sample+"_"+opt+".asc");
+    if (inmatrix) {
       int i1, i2, i3;
       double sumnA=0, sumnM=0; 
       for(int ipT=0; ipT<binPt; ipT++){
@@ -457,33 +456,37 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
             sumnA+=nA[ipT][iCSV][ieta];
             if(nM[ipT][iCSV][ieta]!=0 || nM[ipT][iCSV][ieta]!=0)  {
               cout << ipT << " " << iCSV << " " << ieta << " " << R[ipT][iCSV][ieta] << " +- " << R[ipT][iCSV][ieta]*sqrt(1/nM[ipT][iCSV][ieta]+ 1/nA[ipT][iCSV][ieta]) <<endl; 
+              sigmaR[ipT][iCSV][ieta] = R[ipT][iCSV][ieta]*sqrt(1/nM[ipT][iCSV][ieta]+ 1/nA[ipT][iCSV][ieta]) ;
             }
             else 
               cout << "nM or nA null" <<endl;
+              sigmaR[ipT][iCSV][ieta] = 0; //debug
 	  }
         }
       }
       Rave=sumnM/sumnA;
       inmatrix.close();
+    }
+    else cout << "Unable to open matrix file";      
   }
-  else cout << "Unable to open matrix file " << fn << endl;      
 
   //------------------  
   // Loop over events
   //------------------
   cout << "nEvents: " << nEvents << endl << endl;
   for (int i=0; i<nEvents; ++i){
-    bool jet_inAcc [30];
+    bool jet_inAcc [20];
     vector<Jet> jet;
     bool foundHH=false; 
     ++nCut0;
     tree->GetEvent(i); //READ EVENT
-    //std::cout<<nJet <<"  " <<Jet_btagCSV[0]<<"  "<<Jet_btagCSV[1] << std::endl;
+    //std::cout<<Vtype_<<"  " <<Jet_pt[0]<<"  "<<Jet_pt[1]<<"  "<<Jet_pt[2]<< "   "<<std::endl;
     nJets_InAcc = 0;
     h_nJets->Fill(nJet);
 
-    if(isSignalMC && i<=0.5*nEvents) continue; // to use only second part of the sample if Signal MC //to not run on events used to fill the matrix
-    else {    
+   // split the sample in two parts
+   // ----------------------------------
+    if((!readmatrix && i<0.5*nEvents)|| (readmatrix && i>=0.5*nEvents)) {    
       vector<TLorentzVector> genB_P, genBISR_P;
       for(int p=0; p<4; p++){     
         TLorentzVector b;
@@ -493,27 +496,22 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
         genB_P.push_back(b);     
         //genBISR_P.push_back(b);     
       }
-
+      //cout << i << endl;
       //-----------------------
       // 0.Acceptance cuts - pT & |eta| - id puid
       //-----------------------
       for (int j=0; j<nJet; ++j){
-
-        //fill general variables:
-        h_Jets_CSV_all->Fill(Jet_btagCSV[j]);
-       // h_Jets_pT_all->Fill(Jet_btagCSV[j]);
-
         // h_Jets_HT->Fill(Jet_pt[j]); //debug - check if it better after kin cuts..
         // cout << Jet_id[j] << endl;
         if ((fabs(Jet_eta[j])<Jet_eta_cut) && (Jet_pt[j]>Jet_pt_cut_low) ) { //debug //&& Jet_puId[j]>0 && && (Jet_id[j]>0)
-          //if(yesTrgA || yesTrgB) {        
-            //if (fabs(Jet_eta[j])<2.5) { //only central jets for trigger
-            //  ++nJets_InAcc;
-            //  jet_inAcc[j] = true;
-            //}
-            //else jet_inAcc[j] = false;
-          //}
-          //else {
+       /*   if(yesTrgA || yesTrgB) {        
+            if (fabs(Jet_eta[j])<2.5) { //only central jets for trigger
+              ++nJets_InAcc;
+              jet_inAcc[j] = true;
+            }
+            else jet_inAcc[j] = false;
+          }
+          else {*/
             ++nJets_InAcc;
             jet_inAcc[j] = true;
           //}
@@ -524,13 +522,38 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
       //-----------------------
       // 1.cut on trigger - new trigger path
       //-----------------------
+//debug - new
       if(yesTrgA || (yesTrgB)){ 
         h_HLT_HH4ball->Fill(HLT_HH4bAll);
-//cout << HLT_HH4bAll << endl;
         if(HLT_HH4bAll) ++nCut1;
         else continue;  //break loop if not right trigger path 
       }
- 
+   //debug - emulate trigger cut:
+      /*if(yesTrgA || (yesTrgB)){
+        bool trgAok = false, trgBok = false;
+        if(yesTrgA){
+          //DoubleJet90-Double30-TripleCSV05
+          int nJet90 = 0, nJet30 = 0, nJetCSV = 0;
+          for (int j=0; j<nJet; ++j){
+            if (Jet_pt[j]>90 && fabs(Jet_eta[j])<2.6) nJet90++;
+            if (Jet_pt[j]>30 && fabs(Jet_eta[j])<2.6) nJet30++;
+            if (Jet_btagCSV[j]>0.5) nJetCSV++;
+          }
+          if(nJet90>1 && nJet30>3 && nJetCSV >2) trgAok = true;
+        }
+        //QuadJet45-TripleCSV05
+        if(yesTrgB){
+          int nJet45 = 0, nJetCSV = 0;
+          for (int j=0; j<nJet; ++j){
+            if (Jet_pt[j]>45 && fabs(Jet_eta[j])<2.6) nJet45++;
+            if (Jet_btagCSV[j]>0.5) nJetCSV++;
+          }
+          if(nJet45>3 && nJetCSV >2) trgBok  = true;
+        }
+        if(trgAok || trgBok) ++nCut1;        
+        else continue;  //break loop if not right trigger path
+      }*/
+
       h_nJets_InAcc->Fill(nJets_InAcc); //weightPU? - debug
       //----------------------------------------------
       // 3.cut on number of Jets in acceptance region
@@ -555,26 +578,24 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
             je.eta = Jet_eta[j];
             je.phi = Jet_phi[j];
             jet.push_back(je);  
-                h_Jet4all_pT->Fill(jet[j].pT); //debug
-                h_Jet4all_eta->Fill(jet[j].eta); //debug
-                h_Jet4all_CSV->Fill(jet[j].CSV);//debug
-          }              
-
+          }
         }
         //----------------------------------------------
         // 4. jet sort in CSV + CSV cut on first 3 jets
         //----------------------------------------------
+        //   std::sort (jet.begin(), jet.end(), cmp_CSV );      
+        //   if(jet[2].CSV>CSV_cut_med){ //cut on jets sorted in csv
         std::sort (jet.begin(), jet.end(), cmp_CSV );      
+        //cout << jet[2].CSV << endl;
         if(jet[2].CSV>CSV_cut){ //cut on jets sorted in cmva
   	  ++nCut4;
-           /*
            //debug - check sorting --> OK!!
-            std::cout<< "size " << jet.size() << " ";                
-            for (int j=0; j<jet.size(); ++j){  
-             // std::cout<<jet[j].CSV << " ";
-              //std::cout<<jet[j].pT << " ";
-            }
-            cout << endl; */
+            //std::cout<< "size " << jet.size() << " ";                
+           // for (int j=0; j<jet.size(); ++j){  
+           //   std::cout<<jet[j].CSV << " ";
+           //   std::cout<<jet[j].pT << " ";
+           // }
+           // cout << endl; 	
            //vector<double> c_jet1_CSV, c_jet2_CSV, c_jet3_CSV, c_jet4_CSV;
            //  vector<double> c_jet1_CMVA, c_jet2_CMVA, c_jet3_CMVA, c_jet4_CMVA;
            //  vector<TLorentzVector> c_diJet1, c_diJet2;                  
@@ -588,12 +609,10 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
           for(int l=0; l<NJetInAcc;l++){jets_P.push_back(get_jetVector(&jet[l]));}
           //.............
 
-        int InTrue = 0;
-        double dR=0;
-        if(!isData){ 
           // Match first 3 jets with b and fill deltaR
           //------------
           vector<TLorentzVector> genB_P_match;            
+          double dR=0;
           bool noJetMatch = false;
           std::vector<TLorentzVector>::iterator index;
           for(int l=0; l<3;l++){
@@ -619,6 +638,7 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
           // Fill deltaR for all the fourth jet and find the 'MC Truth' (jet closest to remaining genB)
           //------------
           double dRFinal = deltaRCut;
+          int InTrue = 0;
           for(int j=3; j<NJetInAcc; ++j){
             dR = jets_P[j].DeltaR(genB_P[0]);
             h_jet4b_drAll->Fill(dR,1./(NJetInAcc-3));
@@ -652,19 +672,44 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
                 h_Jet4match_Deta3->Fill(Deta);
               }
               else{
-             //   h_Jet4all_pT->Fill(jet[j].pT);  debug
-//                h_Jet4all_eta->Fill(jet[j].eta);
-//                h_Jet4all_CSV->Fill(jet[j].CSV);
+                h_Jet4all_pT->Fill(jet[j].pT);
+                h_Jet4all_eta->Fill(jet[j].eta);
+                h_Jet4all_CSV->Fill(jet[j].CSV);
                 h_Jet4all_DpT3->Fill(DpT);
                 h_Jet4all_DCSV3->Fill(DCSV);
                 h_Jet4all_Deta3->Fill(Deta);
               }
           }
-        }//!isData
 
-          // read matrix and assign max R
+          // compute matrix if not read mode
           //------------
+          if(!readmatrix){
+            for(int j=3; j<NJetInAcc; ++j){
+              int ipT = jet[j].pT*(binPt-1)/300;
+              if(ipT>binPt-1) ipT = binPt-1;
+	      //cout << jet[j].pT << "  " << ipT <<endl;
+              int iCSV = jet[j].CSV*binCSV;
+              if(iCSV<0) iCSV =0;
+              if(iCSV>(binCSV-1)) iCSV = binCSV-1;
+              int ieta = fabs(jet[j].eta*2); // //(binEta-1)/2 jet[j].eta*(binEta-1)/2;
+              // if(ieta>binEta-1) ieta = binEta-1;
+              //  if(ieta>binEta-1) ieta = binEta-1;
+              if(ieta<2) ieta = 0;
+              else if(ieta<3) ieta = 1;
+              else if(ieta<4) ieta = 2;
+              else ieta = 3;
+	      //cout << jet[j].eta << "  " << ieta <<endl;
+              if(j==InTrue){
+                nM[ipT][iCSV][ieta]++;
+              }
+              else nA[ipT][iCSV][ieta]++;
+            }
+          } 
+          // read matrix and assign max R, if read mode
+          //------------
+          else{
             double Rmax = 0; 
+            double sigmaR_Rmax =0;
             int In =0;
             for(int j=3; j<NJetInAcc; ++j){
               int ipT = jet[j].pT*(binPt-1)/300;
@@ -687,11 +732,43 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
               if(thisR>Rmax) {
                 Rmax = thisR;
                 In=j;
+                sigmaR_Rmax = sigmaR[ipT][iCSV][ieta];
               }
             }                  
             dR = jets_P[In].DeltaR(genB_P[0]); //matched?!
             h_jet4b_drMatrix->Fill(dR);
+
+            // check of power of R wrt to its error...
+            //------------
+            double nSigmaMax = 0; 
+            double  sigmaR_nSigmaMax =0,  R_nSigmaMax =0;
+            int InSigma =0;
+            for(int j=3; j<NJetInAcc; ++j){
+              int ipT = jet[j].pT*(binPt-1)/300;
+              if(ipT>binPt-1) ipT = binPt-1;
+              int iCSV = jet[j].CSV*binCSV;
+              if(iCSV<0) iCSV =0;
+              if(iCSV>(binCSV-1)) iCSV = binCSV-1;
+              int ieta = fabs(jet[j].eta*2); // //(binEta-1)/2 jet[j].eta*(binEta-1)/2;
+              //  if(ieta>binEta-1) ieta = binEta-1;
+              //  if(ieta>binEta-1) ieta = binEta-1;
+              if(ieta<2) ieta = 0;
+              else if(ieta<3) ieta = 1;
+              else if(ieta<4) ieta = 2;
+              else ieta = 3;
+              double thisSigma = (R[ipT][iCSV][ieta]-Rave)/sigmaR[ipT][iCSV][ieta];
+              if(thisSigma>nSigmaMax) {
+                nSigmaMax = thisSigma;
+                InSigma=j;
+	        R_nSigmaMax = R[ipT][iCSV][ieta];
+                sigmaR_nSigmaMax = sigmaR[ipT][iCSV][ieta];
+              }  
+            }
+            //check which association is better..
+            //if(In!=InSigma && Rmax-R_nSigmaMax<2*sqrt(pow(sigmaR_nSigmaMax,2)+pow(sigmaR_Rmax,2))){ 
             if(In==InTrue)nRmaxOk++;
+ 	    if(InSigma==InTrue)nSigmaMaxOk++;
+            //}
 
             // compute di-jets mass and plot it
             // matrix method
@@ -714,6 +791,25 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
             if(DM2 < DM1 && DM2<DM3) mAve_matrix=(M13+M24)/2.;
             if(DM3 < DM1 && DM3<DM2) mAve_matrix=(M14+M23)/2.;
             h_M_matrix->Fill(mAve_matrix);
+
+            // check not matched jets distributions
+            //------------
+	    if(In!=3) { 
+            // if(3==InTrue){
+                 h_CSVmass_4thCSV_b->Fill(mAve_matrix,(jet[3].CSV-jet[In].CSV));
+            // }
+            }
+
+
+            // if(In==InTrue){
+	    if(In!=3) { 
+              h_CSVmass_no4thCSV->Fill(mAve_matrix,jet[k].CSV);
+            // if(In==InTrue){
+            // h_CSVmass_no4thCSV->Fill(mAve_matrix,jet[k].CSV);
+            // }
+            }
+	    if(In ==3) h_CSVmass_4thCSV->Fill(mAve_matrix,jet[k].CSV);
+            // }
 
             // MC truth
             // ----------------------------------
@@ -753,6 +849,100 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
             if(DM3 < DM1 && DM3<DM2) mAve_csv=(M14+M23)/2.;
             h_M_csv->Fill(mAve_csv);
 
+            // minmass method
+            // ----------------------------------
+            double DMmin = 10000000;
+            int kbest = 3; //debug
+            for(k=3;k<NJetInAcc;k++){
+              M12 = (jets_P[0] + jets_P[1]).M();
+              M13 = (jets_P[0] + jets_P[2]).M();
+              M14 = (jets_P[0] + jets_P[k]).M();
+              M23 = (jets_P[1] + jets_P[2]).M();
+              M24 = (jets_P[1] + jets_P[k]).M();
+              M34 = (jets_P[2] + jets_P[k]).M();
+              DM1= fabs(M12 - M34);
+              DM2= fabs(M13 - M24);
+              DM3= fabs(M14 - M23);
+              if(DM1 < DM2 && DM1<DM3 && DM1<DMmin) { DMmin=DM1; mAve=(M12+M34)/2.; kbest =k;}
+              if(DM2 < DM1 && DM2<DM3 && DM2<DMmin) { DMmin=DM2; mAve=(M13+M24)/2.; kbest =k;}
+              if(DM3 < DM1 && DM3<DM2 && DM3<DMmin) { DMmin=DM3; mAve=(M14+M23)/2.; kbest =k;}
+            }
+            h_M_minmass->Fill(mAve);
+            if(kbest==InTrue)nMinMassOk++;
+
+            //to check possible mixed solution
+   	    if(kbest == 3 && In != 3) {
+              h_M_matrixCSV->Fill(mAve_csv);
+              if(kbest==InTrue)nMatrCSVOk++;
+            }
+            else {
+              h_M_matrixCSV->Fill(mAve_matrix);
+              if(In==InTrue)nMatrCSVOk++;
+            }
+            //----------------------
+ 
+            //additional check
+            if(In==InTrue && 3!=InTrue) h_HCSV_HRL_mass->Fill(mAve_matrix, mAve_csv);
+            if(In!=InTrue && 3==InTrue) h2_HCSV_HRL_mass->Fill(mAve_matrix, mAve_csv);
+
+
+          //Loop on jet to compare methods
+          //---------------
+            //purity
+            for(int j=3; j<NJetInAcc; ++j){
+              int n = 0;
+              if(j==In) n+=4;
+              if(j==3) n+=2;
+              if(j==kbest) n+=1;
+              N_all[n]++;
+              if(j==InTrue)Nt_all[n]++;
+            }
+
+            //purity - single case disentagled...
+            for(int j=3; j<NJetInAcc; ++j){
+              //not optimized...
+              if(j==InTrue) {
+                for(int n=0;n<8;n++) Ntr[n]++;
+              }
+              if(j==In && j== kbest && j== 3) { 
+                N_all_b[7]++; 
+                if(j==InTrue)Nt_all_b[7]++; 
+              }
+              if(j==In && j== 3) { 
+                N_all_b[6]++; 
+                if(j==InTrue)Nt_all_b[6]++; 
+              }
+              if(j==In && j== kbest) { 
+                N_all_b[5]++; 
+                if(j==InTrue)Nt_all_b[5]++; 
+              }
+              if(j==In) { 
+                N_all_b[4]++; 
+                if(j==InTrue)Nt_all_b[4]++; 
+              }
+              if(j==3 && j== kbest) { 
+                N_all_b[3]++; 
+                if(j==InTrue)Nt_all_b[3]++; 
+              }
+              if(j==3) { 
+                N_all_b[2]++; 
+                if(j==InTrue)Nt_all_b[2]++; 
+              }
+              if(j==kbest) { 
+                N_all_b[1]++; 
+                if(j==InTrue)Nt_all_b[1]++; 
+              }
+              if(j!=kbest && j!=3 && j!=In) { 
+                N_all_b[0]++; 
+                if(j==InTrue) Nt_all_b[0]++; 
+              }
+            }
+
+	    if(finalIndex==0) finalIndex = InTrue;
+	    else if(finalIndex==1) finalIndex = In;
+	    else if(finalIndex==2) finalIndex = 3;
+	    else if(finalIndex==3) finalIndex = kbest;
+
            // compute variables and fill all histos
            // ----------------------------------
             TLorentzVector H1, H2, HH;
@@ -769,12 +959,16 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
             H2 = jets_P[2]+jets_P[3];
             HH = H1+H2;
   	    h_HH_mass_csv->Fill(HH.M());
-       
+            //mass
+            H2 = jets_P[2]+jets_P[kbest];
+            HH = H1+H2;
+  	    h_HH_mass_minm->Fill(HH.M());
+
             foundHH = true;
             HHf++;       
             vector<TLorentzVector> fJets;
             H1 = jets_P[0]+jets_P[1];  //leading in CSV
-            H2 = jets_P[2]+jets_P[finalIndex];
+            H2 = jets_P[2]+jets_P[finalIndex]; //In == best match with matrix
             HH = H1+H2;
             fJets.push_back(jets_P[0]);
             fJets.push_back(jets_P[1]);
@@ -928,11 +1122,29 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
 	      outtree->Fill();	
 
             }//if FOUND
+          } //else read mode
         } // CSV cut
       } // nJets_InAcc
     jet.clear();
     } // sample splitting
   } // Event loop
+
+  //write matrix
+  int totnM =0;
+  if(!readmatrix){
+    ofstream outmatrix;
+    outmatrix.open(utilsFld+matrixFld+"nMnA_"+sample+"_"+opt+".asc");
+    for(int ipT=0; ipT<binPt; ipT++){
+      for(int iCSV=0; iCSV<binCSV; iCSV++){
+        for(int ieta=0; ieta<binEta; ieta++){
+          outmatrix << ipT << " " << iCSV << " " << ieta << " " << nM[ipT][iCSV][ieta] << "  " << nA[ipT][iCSV][ieta] << endl;
+          totnM += nM[ipT][iCSV][ieta];
+ 	}
+      }
+    }
+    cout << totnM << endl;
+    outmatrix.close();
+  }
 
   cout << endl;
   cout << "'ACCEPTANCE' (Ntrue/Nevents): " << (double)nMCTruth/nEvents*100 << endl;
@@ -940,16 +1152,34 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
   cout << "nMCTruth " << nMCTruth << endl;
   cout << endl;
 
- if(draw){
+  cout << "PURITY (NselectedOK/NselectedAll): "<< endl;
+  cout << "RL " << (double)nRmaxOk/nMCTruth*100 << " " << (double)nRmaxOk << endl;
+//  cout << "RL(nSigmaMaxOk) " << nSigmaMaxOk << " " << (double)nSigmaMaxOk/nMCTruth*100 << endl;
+  cout << "CSV " << (double)nCSVOk/nMCTruth*100 << endl;
+  cout << "MinMass " << (double)nMinMassOk/nMCTruth*100 << endl;
+  cout << endl;
+
+  for(int k=0;k<8;k++)  cout << k << " " << Nt_all_b[k] << " " << N_all_b[k] << " " << Nt_all_b[k]/N_all_b[k]*100 << " " << N_all_b[k]/Ntr[k]*100 << " " << Nt_all_b[k]/Ntr[k]*100 << endl;
+  cout << endl;
+
+  cout << "PURITY - Binary (NselectedOK/NselectedAll): "<< endl;
+  for(int k=0;k<8;k++)  cout << k << " " << Nt_all[k] << " " << N_all[k] << " " << Nt_all[k]/N_all[k]*100 << endl;
+  cout << endl;
+  cout << endl;
+
+if(readmatrix){
 //DRAW...
-
-  TCanvas * c0z = new TCanvas("c0z","all CSV",600,500);
-  c0z->cd();
-  h_Jets_CSV_all->Draw();
-
   TCanvas * c001 = new TCanvas("c001","scatter",600,500);
   c001->cd();
   h_H1_H2_mass->Draw("colz");
+
+  TCanvas * c05 = new TCanvas("c05","scatter_trueRL",600,500);
+  c05->cd();
+  h_HCSV_HRL_mass->Draw("colz");
+
+  TCanvas * c06 = new TCanvas("c06","scatter_trueCSV",600,500);
+  c06->cd();
+  h2_HCSV_HRL_mass->Draw("colz");
 
   TCanvas * c000 = new TCanvas("c000","#DeltaR",600,500);
   c000->cd();
@@ -987,6 +1217,9 @@ cout << h_jet4b_drMatrix->Integral() << " " << h_jet4b_dr->Integral() << endl;
   h_M_csv->Rebin(3);
   h_M_csv->SetLineColor(kBlue);
   h_M_csv->Draw("same");
+  h_M_minmass->Rebin(3);
+  h_M_minmass->SetLineColor(kGreen);
+  h_M_minmass->Draw("same");
 //  h_M_matrixCSV->SetLineColor(kGray);
 //  h_M_matrixCSV->Draw("same");
 
@@ -1049,8 +1282,22 @@ cout << h_jet4b_drMatrix->Integral() << " " << h_jet4b_dr->Integral() << endl;
   h_HH_mass_matr->Draw("same");
   h_HH_mass_csv->SetLineColor(kBlue);
   h_HH_mass_csv->Draw("same");
- }
- 
+  h_HH_mass_minm->SetLineColor(kGreen);
+  h_HH_mass_minm->Draw("same");
+
+ TCanvas * c3 = new TCanvas("c3","CSVM",600,500);
+  c3->cd();
+  h_CSVmass_no4thCSV->Draw("colz");
+
+ TCanvas * c4 = new TCanvas("c4","CSVM_4thCSV",600,500);
+  c4->cd();
+  h_CSVmass_4thCSV->Draw("colz");
+
+ TCanvas * c5 = new TCanvas("c5","CSVM_4thCSV_b",600,500);
+  c5->cd();
+  h_CSVmass_4thCSV_b->Draw("colz");
+}
+
   h_Cuts->Fill(1,nCut0);
   h_Cuts->Fill(3,nCut1);
   h_Cuts->Fill(5,nCut2);
@@ -1064,7 +1311,7 @@ cout << h_jet4b_drMatrix->Integral() << " " << h_jet4b_dr->Integral() << endl;
   outtree->Write();
   outfile->Close();
 
-  std::string histfilename= plotsFld+"Histograms_"+sample+"_"+opt+".root";
+  std::string histfilename=plotsFld+ "Histograms_"+sample+"_"+opt+".root";
   TFile *tFile=new TFile(histfilename.c_str(), "RECREATE");
 
 //new histos
@@ -1079,7 +1326,7 @@ cout << h_jet4b_drMatrix->Integral() << " " << h_jet4b_dr->Integral() << endl;
 
   h_nPV->Write();
   h_nPV_weighted->Write();
-  h_HLT_HH4b->Write();
+  h_HLT_HH4ball->Write();
   h_nGenH->Write();
   h_genH_pT->Write();
   h_genH_mass->Write();

@@ -7,3 +7,5 @@
 *.pcm
 *.root
 merge.sh
+*plots/
+*.asc

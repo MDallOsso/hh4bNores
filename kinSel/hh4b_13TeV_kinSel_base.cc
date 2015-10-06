@@ -25,7 +25,7 @@ double Jet_pt_cut_low = 20.; //30.;
 double deltaRCut = 0.5; //0.5
 int nJets_cut = 4; //3
 double Jet_eta_cut = 10; //2.5 - 10=noCut
-double CSV_cut = 0.605; //Run2: low 0.605; medium 0.890; high 0.970. Run1: low 0.679 (used in the first presentation).
+double CSV_cut = 0.1; //Run2: low 0.605; medium 0.890; high 0.970. Run1: low 0.679 (used in the first presentation).
 double CMVA_cut_med = 0.1; //0.71; //0.71;
 double H_mass = 115.0; //for withinRegion
 double dijetM_cut_low = 100.;
@@ -269,11 +269,6 @@ TH2F *h2_HCSV_HRL_mass = new TH2F("h2_HCSV_HRL_mass", " mh mh; <m_{H_{RL}}> (GeV
 //  TH2F *h_R_pTCSV = new TH2F("h_R_pTCSV", " R; pT (GeV/c); CSV)", 100, 0., 500., 50, 0., 1.);
 //  TH2F *h_R_CSVeta = new TH2F("h_R_CSVeta", " R; CSV; eta)", 50, 0., 1., 100, -4., 4.);
 
-//new new histos
-TH1F *h_Jets_CSV_all=new TH1F("h_Jets_CSV_all", "Jets_CSV_all; all jets CSV", 50, 0., 1.);
-
-
-
 //-------------
 //   MAIN
 //-------------
@@ -291,18 +286,19 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
   std::cout<<"Opened input file "<<inputfilename<<std::endl;
    // Book variables
   ULong64_t evt;
-  unsigned int run, lumi;
+  unsigned int run;
   int nJet, nGenH, nPV, nGenBfHafterISR;    
-  float Jet_id[30],Jet_puId[30],Jet_btagCSV[30],Jet_btagCMVA[30],Jet_rawPt[30],Jet_mcPt[30],Jet_mcFlavour[30];
-  float Jet_corr_JECUp[30], Jet_corr_JECDown[30], Jet_corr[30];
-  float Jet_mcMatchId[30],Jet_pt[30],Jet_eta[30],Jet_phi[30],Jet_mass[30],Jet_hadronFlavour[30],Jet_btagProb[30];
-  float Jet_btagBProb[30], Jet_btagnew[30],Jet_btagCSVV0[30], Jet_chHEF[30],Jet_neHEF[30],Jet_chEmEF[30],Jet_neEmEF[30];
-  float Jet_chMult[30],Jet_leadTrackPt[30],Jet_mcEta[30],Jet_mcPhi[30],Jet_mcM[30], ht;
-  float GenH_pt[2], GenH_mass[2], GenH_eta[2], GenH_phi[2], GenH_status[2];
-  float nGenBfH[4], GenBfH_pdgId[4],GenBfH_pt[4],GenBfH_eta[4],GenBfH_phi[4],GenBfH_mass[4], GenBfH_status[4], GenBfH_charge[4];
-  float GenBfHafterISR_pdgId[4],GenBfHafterISR_pt[4],GenBfHafterISR_eta[4],GenBfHafterISR_phi[4],GenBfHafterISR_mass[4];
+  double Jet_id[20],Jet_puId[20],Jet_btagCSV[20],Jet_btagCMVA[20],Jet_rawPt[20],Jet_mcPt[20],Jet_mcFlavour[20];
+  double Jet_corr_JECUp[20], Jet_corr_JECDown[20], Jet_corr[20];
+  double Jet_mcMatchId[20],Jet_pt[20],Jet_eta[20],Jet_phi[20],Jet_mass[20],Jet_hadronFlavour[20],Jet_btagProb[20];
+  double Jet_btagBProb[20], Jet_btagnew[20],Jet_btagCSVV0[20], Jet_chHEF[20],Jet_neHEF[20],Jet_chEmEF[20],Jet_neEmEF[20];
+  double Jet_chMult[20],Jet_leadTrackPt[20],Jet_mcEta[20],Jet_mcPhi[20],Jet_mcM[20], ht;
+  double GenH_pt[2], GenH_mass[2], GenH_eta[2], GenH_phi[2], GenH_status[2];
+  double nGenBfH[4], GenBfH_pdgId[4],GenBfH_pt[4],GenBfH_eta[4],GenBfH_phi[4],GenBfH_mass[4], GenBfH_status[4], GenBfH_charge[4];
+  double GenBfHafterISR_pdgId[4],GenBfHafterISR_pt[4],GenBfHafterISR_eta[4],GenBfHafterISR_phi[4],GenBfHafterISR_mass[4];
   float weightPU, Vtype_, met_pt,met_eta,met_phi,met_mass;
   float HLT_HH4bAll, HLT_BIT_QuadTriple, HLT_BIT_QuadDouble, HLT_BIT_DoubleTriple, HLT_BIT_DoubleDouble; 
+
 
   //Retrieve variables
   //--------------------
@@ -439,10 +435,10 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
     }
   }
   //read matrix and calculate R
-  ifstream inmatrix;
-  std::string fn = utilsFld+matrixFld+"nMnA_"+sample+"_"+opt+".asc";
-  inmatrix.open(fn);
-  if (inmatrix) {
+    ifstream inmatrix;
+    std::string fn = utilsFld+matrixFld+"nMnA_"+opt+".asc";
+    inmatrix.open(fn);
+    if (inmatrix) {
       int i1, i2, i3;
       double sumnA=0, sumnM=0; 
       for(int ipT=0; ipT<binPt; ipT++){
@@ -465,20 +461,20 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
       }
       Rave=sumnM/sumnA;
       inmatrix.close();
-  }
-  else cout << "Unable to open matrix file " << fn << endl;      
+    }
+    else cout << "Unable to open matrix file " << fn << endl;      
 
   //------------------  
   // Loop over events
   //------------------
   cout << "nEvents: " << nEvents << endl << endl;
   for (int i=0; i<nEvents; ++i){
-    bool jet_inAcc [30];
+    bool jet_inAcc [20];
     vector<Jet> jet;
     bool foundHH=false; 
     ++nCut0;
     tree->GetEvent(i); //READ EVENT
-    //std::cout<<nJet <<"  " <<Jet_btagCSV[0]<<"  "<<Jet_btagCSV[1] << std::endl;
+    //std::cout<<Vtype_<<"  " <<Jet_pt[0]<<"  "<<Jet_pt[1]<<"  "<<Jet_pt[2]<< "   "<<std::endl;
     nJets_InAcc = 0;
     h_nJets->Fill(nJet);
 
@@ -487,22 +483,17 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
       vector<TLorentzVector> genB_P, genBISR_P;
       for(int p=0; p<4; p++){     
         TLorentzVector b;
-        //TLorentzVector bISR;
-        //bISR.SetPtEtaPhiM(GenBfH_pt[p],GenBfH_eta[p],GenBfH_phi[p],GenBfH_mass[p]);
+        TLorentzVector bISR;
+        bISR.SetPtEtaPhiM(GenBfH_pt[p],GenBfH_eta[p],GenBfH_phi[p],GenBfH_mass[p]);
         b.SetPtEtaPhiM(GenBfH_pt[p],GenBfH_eta[p],GenBfH_phi[p],GenBfH_mass[p]);
         genB_P.push_back(b);     
-        //genBISR_P.push_back(b);     
+        genBISR_P.push_back(b);     
       }
 
       //-----------------------
       // 0.Acceptance cuts - pT & |eta| - id puid
       //-----------------------
       for (int j=0; j<nJet; ++j){
-
-        //fill general variables:
-        h_Jets_CSV_all->Fill(Jet_btagCSV[j]);
-       // h_Jets_pT_all->Fill(Jet_btagCSV[j]);
-
         // h_Jets_HT->Fill(Jet_pt[j]); //debug - check if it better after kin cuts..
         // cout << Jet_id[j] << endl;
         if ((fabs(Jet_eta[j])<Jet_eta_cut) && (Jet_pt[j]>Jet_pt_cut_low) ) { //debug //&& Jet_puId[j]>0 && && (Jet_id[j]>0)
@@ -565,16 +556,15 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
         // 4. jet sort in CSV + CSV cut on first 3 jets
         //----------------------------------------------
         std::sort (jet.begin(), jet.end(), cmp_CSV );      
-        if(jet[2].CSV>CSV_cut){ //cut on jets sorted in cmva
+        if(jet[0].CSV>0.1){ //cut on jets sorted in cmva //CSV_cut 1
   	  ++nCut4;
-           /*
            //debug - check sorting --> OK!!
             std::cout<< "size " << jet.size() << " ";                
             for (int j=0; j<jet.size(); ++j){  
-             // std::cout<<jet[j].CSV << " ";
+              std::cout<<jet[j].CSV << " ";
               //std::cout<<jet[j].pT << " ";
             }
-            cout << endl; */
+            cout << endl; 	
            //vector<double> c_jet1_CSV, c_jet2_CSV, c_jet3_CSV, c_jet4_CSV;
            //  vector<double> c_jet1_CMVA, c_jet2_CMVA, c_jet3_CMVA, c_jet4_CMVA;
            //  vector<TLorentzVector> c_diJet1, c_diJet2;                  
@@ -588,12 +578,10 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
           for(int l=0; l<NJetInAcc;l++){jets_P.push_back(get_jetVector(&jet[l]));}
           //.............
 
-        int InTrue = 0;
-        double dR=0;
-        if(!isData){ 
           // Match first 3 jets with b and fill deltaR
           //------------
           vector<TLorentzVector> genB_P_match;            
+          double dR=0;
           bool noJetMatch = false;
           std::vector<TLorentzVector>::iterator index;
           for(int l=0; l<3;l++){
@@ -619,6 +607,7 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
           // Fill deltaR for all the fourth jet and find the 'MC Truth' (jet closest to remaining genB)
           //------------
           double dRFinal = deltaRCut;
+          int InTrue = 0;
           for(int j=3; j<NJetInAcc; ++j){
             dR = jets_P[j].DeltaR(genB_P[0]);
             h_jet4b_drAll->Fill(dR,1./(NJetInAcc-3));
@@ -660,7 +649,6 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
                 h_Jet4all_Deta3->Fill(Deta);
               }
           }
-        }//!isData
 
           // read matrix and assign max R
           //------------
@@ -942,11 +930,6 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
 
  if(draw){
 //DRAW...
-
-  TCanvas * c0z = new TCanvas("c0z","all CSV",600,500);
-  c0z->cd();
-  h_Jets_CSV_all->Draw();
-
   TCanvas * c001 = new TCanvas("c001","scatter",600,500);
   c001->cd();
   h_H1_H2_mass->Draw("colz");
