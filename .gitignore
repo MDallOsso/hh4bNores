@@ -9,3 +9,4 @@
 merge.sh
 *plots/
 *.asc
+*.backup

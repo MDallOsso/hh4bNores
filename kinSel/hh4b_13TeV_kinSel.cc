@@ -277,7 +277,7 @@ TH1F *h_Jets_CSV_all=new TH1F("h_Jets_CSV_all", "Jets_CSV_all; all jets CSV", 50
 //-------------
 //   MAIN
 //-------------
-void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isData = false, bool isSignalMC = true, bool draw = false)
+void hh4b_kinSel(std::string sample, std::string MCsample_RL, std::string opt, int maxEvents =0, bool isData = false, bool isSignalMC = true, bool draw = false)
 {
 
   std::string inputfilename;  
@@ -440,7 +440,7 @@ void hh4b_kinSel(std::string sample, std::string opt, int maxEvents =0, bool isD
   }
   //read matrix and calculate R
   ifstream inmatrix;
-  std::string fn = utilsFld+matrixFld+"nMnA_"+sample+"_"+opt+".asc";
+  std::string fn = utilsFld+matrixFld+"nMnA_"+MCsample_RL+"_"+opt+".asc";
   inmatrix.open(fn);
   if (inmatrix) {
       int i1, i2, i3;
