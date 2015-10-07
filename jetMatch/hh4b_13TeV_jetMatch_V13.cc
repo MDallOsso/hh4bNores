@@ -17,6 +17,7 @@
 #include <TCanvas.h>
 #include <TLorentzVector.h>
 #include <TLegend.h>
+#include <TLatex.h>
 #include <iostream>
 #include <stdlib.h>
 #include <stdio.h>
@@ -29,8 +30,8 @@
 double pi=3.14159265;
 
 //bool doQCD = false;
-bool yesTrgA = true; //debug
-bool yesTrgB = true;
+bool yesTrgA = false; //debug
+bool yesTrgB = false;
 double Jet_pt_cut_low = 20.; //30.;
 double deltaRCut = 0.5; //0.5
 int nJets_cut = 4; //3
@@ -127,6 +128,13 @@ int withinRegion(double mH1, double mH2, double r1=15., double r2=30., double mH
   }
   else ret=5;
   return ret;
+}
+
+void drawCMSsimulation() {
+  TLatex* text=new TLatex(0.18, 0.95, "CMS Simulation 2015, #sqrt{s}=13 TeV, preliminary");
+  text->SetNDC();
+  text->SetTextSize(0.03);
+  text->Draw();
 }
 
 //-------------
@@ -1168,18 +1176,28 @@ void hh4b_nonres_jetMatch(std::string sample, std::string opt, bool readmatrix=f
   cout << endl;
 
 if(readmatrix){
+
 //DRAW...
+  TLegend* leg = new TLegend(0.60,0.72,0.82,0.85);
+  leg->SetTextSize(0.03);
+
   TCanvas * c001 = new TCanvas("c001","scatter",600,500);
   c001->cd();
   h_H1_H2_mass->Draw("colz");
+  drawCMSsimulation();
+  c001->SaveAs((TString)plotsFld+"scatter_"+sample+"_"+opt+".png");
+  c001->SaveAs((TString)plotsFld+"scatter_"+sample+"_"+opt+".pdf");
+
 
   TCanvas * c05 = new TCanvas("c05","scatter_trueRL",600,500);
   c05->cd();
   h_HCSV_HRL_mass->Draw("colz");
+  drawCMSsimulation();
 
   TCanvas * c06 = new TCanvas("c06","scatter_trueCSV",600,500);
   c06->cd();
   h2_HCSV_HRL_mass->Draw("colz");
+  drawCMSsimulation();
 
   TCanvas * c000 = new TCanvas("c000","#DeltaR",600,500);
   c000->cd();
@@ -1192,6 +1210,14 @@ cout << h_jet4b_drMatrix->Integral() << " " << h_jet4b_dr->Integral() << endl;
 //  h_jet4b_drAll->Scale(h_jet4b_drMatrix->Integral()/h_jet4b_drAll->Integral());
   h_jet4b_drNotMatched ->SetLineColor(kBlue);
   h_jet4b_drNotMatched ->Draw("same");
+  leg->AddEntry(h_jet4b_dr,"truth","l");
+  leg->AddEntry(h_jet4b_drMatrix,"RL","l");
+  leg->AddEntry(h_jet4b_drNotMatched,"not matched","l");
+  leg->Draw("same");  
+  drawCMSsimulation();
+  c000->SaveAs((TString)plotsFld+"DR_"+sample+"_"+opt+".png");
+  c000->SaveAs((TString)plotsFld+"DR_"+sample+"_"+opt+".pdf");
+
 //  h_jet4b_drAll->SetLineColor(kBlue);
 //  h_jet4b_drAll->Draw("same");
 
@@ -1205,6 +1231,13 @@ cout << h_jet4b_drMatrix->Integral() << " " << h_jet4b_dr->Integral() << endl;
   h_nJets->GetYaxis()->SetTitle("1/Nevents");
   h_nJets_InAcc->Draw();
   h_nJets->Draw("same");
+  leg->Clear();
+  leg->AddEntry(h_nJets_InAcc,"Jets in acceptance","l");
+  leg->AddEntry( h_nJets,"all Jets","l");
+  leg->Draw("same");
+  drawCMSsimulation();
+  c00->SaveAs((TString)plotsFld+"njets_"+sample+"_"+opt+".png");
+  c00->SaveAs((TString)plotsFld+"njets_"+sample+"_"+opt+".pdf");
 
 
   TCanvas * c0 = new TCanvas("c0","<m>",600,500);
@@ -1220,12 +1253,23 @@ cout << h_jet4b_drMatrix->Integral() << " " << h_jet4b_dr->Integral() << endl;
   h_M_minmass->Rebin(3);
   h_M_minmass->SetLineColor(kGreen);
   h_M_minmass->Draw("same");
+  leg->Clear();
+  leg->AddEntry(h_M_true,"MC Truth","l");
+  leg->AddEntry(h_M_matrix,"Rel. Likelihood","l");
+  leg->AddEntry(h_M_csv,"4th jet CSV","l");
+  leg->AddEntry(h_M_minmass,"min #Delta m di-jets","l");
+  leg->Draw("same");
+  drawCMSsimulation();
+  c0->SaveAs((TString)plotsFld+"mh_"+sample+"_"+opt+".png");
+  c0->SaveAs((TString)plotsFld+"mh_"+sample+"_"+opt+".pdf");
+ // leg->Draw("same");
 //  h_M_matrixCSV->SetLineColor(kGray);
 //  h_M_matrixCSV->Draw("same");
 
   TCanvas * c = new TCanvas("c","nome",600,500);
   c->Divide(2,3);
   c->cd(1);
+  drawCMSsimulation();
   h_Jet4all_pT->Scale(h_Jet4match_pT->Integral()/h_Jet4all_pT->Integral());
   h_Jet4all_pT->Draw();
   h_Jet4match_pT->SetLineColor(kRed);
@@ -1250,7 +1294,6 @@ cout << h_jet4b_drMatrix->Integral() << " " << h_jet4b_dr->Integral() << endl;
   h_Jet4match_DCSV3->Draw();
   h_Jet4all_DCSV3->Scale(h_Jet4match_DCSV3->Integral()/h_Jet4all_DCSV3->Integral());
   h_Jet4all_DCSV3->Draw("same");
-
   c->cd(6);
   h_Jet4match_Deta3->SetLineColor(kRed);
   h_Jet4match_Deta3->Draw();
@@ -1260,6 +1303,7 @@ cout << h_jet4b_drMatrix->Integral() << " " << h_jet4b_dr->Integral() << endl;
  TCanvas * c1 = new TCanvas("c1","discr",1000,250);
   c1->Divide(3,1);
   c1->cd(1);
+  drawCMSsimulation();
   h_Jet4all_pT->Scale(h_Jet4match_pT->Integral()/h_Jet4all_pT->Integral());
   h_Jet4all_pT->Draw();
   h_Jet4match_pT->SetLineColor(kRed);
@@ -1284,18 +1328,30 @@ cout << h_jet4b_drMatrix->Integral() << " " << h_jet4b_dr->Integral() << endl;
   h_HH_mass_csv->Draw("same");
   h_HH_mass_minm->SetLineColor(kGreen);
   h_HH_mass_minm->Draw("same");
+  leg->Clear();
+  leg->AddEntry(h_HH_mass_tr,"MC Truth","l");
+  leg->AddEntry(h_HH_mass_matr,"Rel. Likelihood","l");
+  leg->AddEntry(h_HH_mass_csv,"4th jet CSV","l");
+  leg->AddEntry(h_HH_mass_minm,"min #Delta m di-jets","l");
+  leg->Draw("same");
+  drawCMSsimulation();
+  c2->SaveAs((TString)plotsFld+"mhh_"+sample+"_"+opt+".png");
+  c2->SaveAs((TString)plotsFld+"mhh_"+sample+"_"+opt+".pdf");
 
  TCanvas * c3 = new TCanvas("c3","CSVM",600,500);
   c3->cd();
   h_CSVmass_no4thCSV->Draw("colz");
+  drawCMSsimulation();
 
  TCanvas * c4 = new TCanvas("c4","CSVM_4thCSV",600,500);
   c4->cd();
   h_CSVmass_4thCSV->Draw("colz");
+  drawCMSsimulation();
 
  TCanvas * c5 = new TCanvas("c5","CSVM_4thCSV_b",600,500);
   c5->cd();
   h_CSVmass_4thCSV_b->Draw("colz");
+  drawCMSsimulation();
 }
 
   h_Cuts->Fill(1,nCut0);
@@ -1426,4 +1482,5 @@ cout << h_jet4b_drMatrix->Integral() << " " << h_jet4b_dr->Integral() << endl;
 
   return;
 }
+
 

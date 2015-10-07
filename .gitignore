@@ -10,3 +10,5 @@ merge.sh
 *plots/
 *.asc
 *.backup
+*.png
+*.pdf
