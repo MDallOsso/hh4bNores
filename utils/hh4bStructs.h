@@ -2,6 +2,12 @@
 //Struct and Functions for hh4b analysis macros
 //---------------------------------------------
 
+double pi=3.14159265;
+//for withinRegion
+double H_mass = 115.0;
+double dijetM_cut_low = 100.;
+double dijetM_cut_high = 150.;
+
 //Jet
 typedef struct{
   //double CMVA;
@@ -11,6 +17,12 @@ typedef struct{
   double eta;
   double phi;
 } Jet;
+
+//Jet for plots
+typedef struct{
+  TH1F* h;
+  double norm;
+} Jet4Plot;
 
 //get_jetVector --> get TLorentzVector from Jet
 TLorentzVector get_jetVector(Jet* jj){ 

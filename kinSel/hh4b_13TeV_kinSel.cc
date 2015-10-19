@@ -18,8 +18,6 @@
 #include <fstream>
 #include <iomanip>
 
-double pi=3.14159265;
-
 // selection parameters:
 //-------------------------
 bool yesTrg_hh4bAll = true;
@@ -31,16 +29,12 @@ bool yesTrg_hh4bFinal = false; //only (QuadTriple || DoubleTriple)
 
 bool isSignalMC = false; //To take only second part with RL method!!
 
-double Jet_pt_cut_low = 20.; //30.;
+double Jet_pt_cut_low = 30.; //30.;
 double deltaRCut = 0.5; //0.5
 int nJets_cut = 4; //3
-double Jet_eta_cut = 10; //2.5 - 10=noCut
+double Jet_eta_cut = 10.; //2.5 - 10=noCut
 double CSV_cut = 0.605;  //Run2: low 0.605; medium 0.890; high 0.970. Run1: low 0.679 (used in the first presentation).
 
-//for withinRegion
-double H_mass = 115.0;
-double dijetM_cut_low = 100.;
-double dijetM_cut_high = 150.;
 // matrix parameters  --> needed?...
 static const int binPt = 10;
 static const int binCSV = 8;
@@ -178,15 +172,10 @@ hh4b_kinSel::hh4b_kinSel(std::string sample, bool isData, std::string opt, int f
       if(1) ++nCut2; //debug - to be implemented..
       else continue;
 
-      //----------------------------------------------
-      // 3.cut on number of Jets in acceptance region
-      //----------------------------------------------
-      for (int j=0; j<nJet; ++j){
-        if ((fabs(Jet_eta[j])<Jet_eta_cut) && (Jet_pt[j]>Jet_pt_cut_low) ) { //debug //&& Jet_puId[j]>0 && && (Jet_id[j]>0)
-            ++nJets_InAcc;
-            jet_inAcc[j] = true;
-        }
-        else jet_inAcc[j] = false;
+      //----------------------------------------
+      // fill Jet vector with jet sorted in pT
+      //----------------------------------------
+      for (int j=0; j<nJet; ++j){ //loop on all the jets (only inAcc are saved)
         Jet je;         
         je.CSV = Jet_btagCSV[j];
         je.pT  = Jet_pt[j];
@@ -194,34 +183,23 @@ hh4b_kinSel::hh4b_kinSel(std::string sample, bool isData, std::string opt, int f
         je.eta = Jet_eta[j];
         je.phi = Jet_phi[j];
         jets_all.push_back(je);  //all jets after trigger
+        if ((fabs(Jet_eta[j])<Jet_eta_cut) && (Jet_pt[j]>Jet_pt_cut_low) ) {//debug //&& Jet_puId[j]>0 && && (Jet_id[j]>0)
+          ++nJets_InAcc; 
+          jets_inAcc.push_back(je);     
+        }        
       }
-      if(nJets_InAcc>=nJets_cut){ 
-        ++nCut3;
-        //----------------------------------------
-        // fill Jet vector with jet sorted in pT
-        //----------------------------------------
-	for (int j=0; j<nJet; ++j){ //loop on all the jets (only inAcc are saved)
-          if(jet_inAcc[j]){
-            Jet je;         
-            je.CSV = Jet_btagCSV[j];
-            //je.CMVA = Jet_btagCMVA[j];
-            je.pT  = Jet_pt[j];
-            je.mass = Jet_mass[j];
-            je.eta = Jet_eta[j];
-            je.phi = Jet_phi[j];
-            jets_inAcc.push_back(je);  
-            //h_Jet4all_pT->Fill(jets_inAcc[j].pT); //debug
-            //h_Jet4all_eta->Fill(jets_inAcc[j].eta); //debug
-            //h_Jet4all_CSV->Fill(jets_inAcc[j].CSV);//debug
-          }              
-        }
+      //----------------------------------------------
+      // 3.cut on number of Jets in acceptance region
+      //----------------------------------------------
+      if(nJets_InAcc>=nJets_cut) ++nCut3;
+      else continue;
 
-        //----------------------------------------------
-        // 4. jet sort in CSV + CSV cut on first 3 jets
-        //----------------------------------------------
-        std::sort (jets_inAcc.begin(), jets_inAcc.end(), cmp_CSV );      
-        if(jets_inAcc[2].CSV>CSV_cut){ //cut on jets sorted in cmva
-  	  ++nCut4;
+      //----------------------------------------------
+      // 4. jet sort in CSV + CSV cut on first 3 jets
+      //----------------------------------------------
+      std::sort (jets_inAcc.begin(), jets_inAcc.end(), cmp_CSV );      
+      if(jets_inAcc[2].CSV>CSV_cut){ //cut on jets sorted in btag
+      ++nCut4;
            /*
            //debug - check sorting --> OK!!
             std::cout<< "size " << jet.size() << " ";                
@@ -389,12 +367,7 @@ hh4b_kinSel::hh4b_kinSel(std::string sample, bool isData, std::string opt, int f
           for(std::vector<Jet>::iterator it = jets_inAcc.begin()+4 ; it != jets_inAcc.end(); ++it){ //additional jets
               aJets.push_back(*it);
           }
-//does not work?..they are equal!!
-//if((double)fJets_P[0].M() != fJets[0].mass) {
-//  errfJets++;
-//  cout << (double)fJets_P[0].M() << "  " << fJets[0].mass << endl;
-//}
-if(jets_inAcc_P[1].M() != fJets_P[1].M()) nMixJets++;
+          if(jets_inAcc_P[1].M() != fJets_P[1].M()) nMixJets++; //debug
 
           //angles computation:     
           H1_CosThSt = computeCosThetaStar(H1,HH);
@@ -470,7 +443,7 @@ if(jets_inAcc_P[1].M() != fJets_P[1].M()) nMixJets++;
 
             }//if FOUND
         } // CSV cut
-      } // nJets_InAcc
+     // } // nJets_InAcc
     } // sample splitting
     jets_all.clear();
     jets_inAcc.clear();
@@ -526,7 +499,9 @@ cout << "# error fJets: " << errfJets << endl;
   outfile->Close(); 
 
   //create Hist file and write histos
-  std::string histfilename= plotsFld+"Histograms_"+sample+"_"+opt+".root";
+  std::string histfilename;
+  if(maxEvents!=0) histfilename = plotsFld+"Histograms_"+sample+"_"+opt+"_"+std::to_string(maxEvents)+".root";
+  else histfilename = plotsFld+"Histograms_"+sample+"_"+opt+".root";
   writeHistos(histfilename, isData);
   std::cout<<"Wrote output file "<<histfilename<<std::endl <<std::endl;
 
@@ -650,11 +625,10 @@ std::string hh4b_kinSel::jet4SelectionMethod(int index){
  }
  return method;
 }
+//---------------
 
+//Retrieve variables
 void hh4b_kinSel::setBranches(bool isData, TTree* tree){
-
-  //Retrieve variables
-  //--------------------
   tree->SetBranchAddress("nprimaryVertices", &(nPV));
   tree->SetBranchAddress("Vtype", &(Vtype_));
 //tree->SetBranchAddress("evt",&evt); 
@@ -771,56 +745,62 @@ void hh4b_kinSel::fillHistos(bool isData){
    }
    h_naJets->Fill(aJets.size());
 
-   h_fJet1_pT->Fill(fJets_P[0].Pt());
-   h_fJet2_pT->Fill(fJets_P[1].Pt());
-   h_fJet3_pT->Fill(fJets_P[2].Pt());
-   h_fJet4_pT->Fill(fJets_P[3].Pt());
-   h_fJet1_Eta->Fill(fJets_P[0].Eta());
-   h_fJet2_Eta->Fill(fJets_P[1].Eta());
-   h_fJet3_Eta->Fill(fJets_P[2].Eta());
-   h_fJet4_Eta->Fill(fJets_P[3].Eta());
-   h_fJet1_CSV->Fill(fJets[0].CSV);
-   h_fJet2_CSV->Fill(fJets[1].CSV);
-   h_fJet3_CSV->Fill(fJets[2].CSV);
-   h_fJet4_CSV->Fill(fJets[3].CSV);	
-//	      double Jets_avgCSV = (c_jet1_CSV[Ind]+c_jet2_CSV[Ind]+c_jet3_CSV[Ind])/3;    
-	      //double Jets_minCSV = std::min({c_jet1_CSV[Ind],c_jet2_CSV[Ind],c_jet3_CSV[Ind]});
-//	      h_3Jets_avgCSV->Fill(Jets_avgCSV);
-	      //h_3Jets_minCSV->Fill(Jets_minCSV);	
-   h_H1_mass->Fill(H1.M());
-   h_H1_pT->Fill(H1.Pt());
-   h_H1_Eta->Fill(H1.Eta());
-   h_H1_Phi->Fill(H1.Phi());
-   h_H1_CosThSt->Fill(fabs(H1_CosThSt));
-   h_H1_deltaR->Fill(deltaR_H1);
-   h_H1_deltaPhi->Fill(deltaPhi_H1);
-   h_H1_deltaEta->Fill(deltaEta_H1);
-	      h_H1_deltaPhiVSpT->Fill(deltaPhi_H1,H1.Pt());
-	      h_H2_mass->Fill(H2.M());
-	      h_H2_pT->Fill(H2.Pt());
-	      h_H2_CosThSt->Fill(fabs(H2_CosThSt));
-	      h_H2_deltaR->Fill(deltaR_H2);
-	      h_H2_deltaPhi->Fill(deltaPhi_H2);
-	      h_H2_deltaEta->Fill(deltaEta_H2);
-	      h_H2_deltaPhiVSpT->Fill(deltaPhi_H2,H2.Pt());
-	      h_H_mass->Fill(H1.M());
-	      h_H_mass->Fill(H2.M());
-	      h_H_pT->Fill(H1.Pt());
-	      h_H_pT->Fill(H2.M());
-	      h_H_Eta->Fill(H1.Eta());
-	      h_H_Eta->Fill(H2.Eta());
-	      h_H_Phi->Fill(H1.Phi());
-	      h_H_Phi->Fill(H2.Phi());
-	      h_HH_mass->Fill(HH.M());
-	      h_HH_pT->Fill(HH.Pt());
-	      h_HH_Eta->Fill(HH.Eta());
-	      h_HH_Phi->Fill(HH.Phi());
-              h_H1_H2_mass->Fill(H1.M(), H2.M());  //leading H first
-	      h_HH_deltaR->Fill(deltaR_HH);
-	      h_HH_deltaPhi->Fill(deltaPhi_HH);
-	      h_HH_deltaEta->Fill(deltaEta_HH);
-	      //int region=withinRegion(H1_P.M(), H2_P.M(), 17.5, 37.5, 125, 125);	
-	      h_MET->Fill(met.E());     
+   h_fJet1_mass->Fill(fJets_P[0].M());
+    h_fJet2_mass->Fill(fJets_P[1].M());
+    h_fJet3_mass->Fill(fJets_P[2].M());
+    h_fJet4_mass->Fill(fJets_P[3].M());
+    h_fJet1_pT->Fill(fJets_P[0].Pt());
+    h_fJet2_pT->Fill(fJets_P[1].Pt());
+    h_fJet3_pT->Fill(fJets_P[2].Pt());
+    h_fJet4_pT->Fill(fJets_P[3].Pt());
+    h_fJet1_Eta->Fill(fJets_P[0].Eta());
+    h_fJet2_Eta->Fill(fJets_P[1].Eta());
+    h_fJet3_Eta->Fill(fJets_P[2].Eta());
+    h_fJet4_Eta->Fill(fJets_P[3].Eta());
+    h_fJet1_CSV->Fill(fJets[0].CSV);
+    h_fJet2_CSV->Fill(fJets[1].CSV);
+    h_fJet3_CSV->Fill(fJets[2].CSV);
+    h_fJet4_CSV->Fill(fJets[3].CSV);	
+    h_fJet3avg_CSV->Fill((fJets[0].CSV+fJets[1].CSV+fJets[2].CSV)/3); //avg of first 3 jets
+    h_fJet3min_CSV->Fill(std::min({fJets[0].CSV,fJets[1].CSV,fJets[2].CSV})); //minimum CSV of first 3 jets
+    h_H1_mass->Fill(H1.M());
+    h_H1_pT->Fill(H1.Pt());
+    h_H1_Eta->Fill(H1.Eta());
+    h_H1_Phi->Fill(H1.Phi());
+    h_H1_CosThSt->Fill(fabs(H1_CosThSt));
+    h_H1_deltaR->Fill(deltaR_H1);
+    h_H1_deltaPhi->Fill(deltaPhi_H1);
+    h_H1_deltaEta->Fill(deltaEta_H1);
+    h_H1_deltaPhiVSpT->Fill(deltaPhi_H1,H1.Pt());
+   h_H2_mass->Fill(H2.M());
+    h_H2_pT->Fill(H2.Pt());
+    h_H2_Eta->Fill(H2.Eta());
+    h_H2_Phi->Fill(H2.Phi());
+    h_H2_CosThSt->Fill(fabs(H2_CosThSt));
+    h_H2_deltaR->Fill(deltaR_H2);
+    h_H2_deltaPhi->Fill(deltaPhi_H2);
+    h_H2_deltaEta->Fill(deltaEta_H2);
+    h_H2_deltaPhiVSpT->Fill(deltaPhi_H2,H2.Pt());
+   h_H_mass->Fill(H1.M());
+    h_H_mass->Fill(H2.M());
+    h_H_pT->Fill(H1.Pt());
+    h_H_pT->Fill(H2.M());
+    h_H_Eta->Fill(H1.Eta());
+    h_H_Eta->Fill(H2.Eta());
+    h_H_Phi->Fill(H1.Phi());
+    h_H_Phi->Fill(H2.Phi());
+    h_H_CosThSt->Fill(fabs(H1_CosThSt));
+    h_H_CosThSt->Fill(fabs(H2_CosThSt));
+   h_HH_mass->Fill(HH.M());
+    h_HH_pT->Fill(HH.Pt());
+    h_HH_Eta->Fill(HH.Eta());
+    h_HH_Phi->Fill(HH.Phi());
+    h_H1_H2_mass->Fill(H1.M(), H2.M());  //leading H first
+    h_HH_deltaR->Fill(deltaR_HH);
+    h_HH_deltaPhi->Fill(deltaPhi_HH);
+    h_HH_deltaEta->Fill(deltaEta_HH);
+    //int region=withinRegion(H1_P.M(), H2_P.M(), 17.5, 37.5, 125, 125);	
+   h_MET->Fill(met.E());     
 }
 //--------------
 
@@ -848,11 +828,16 @@ void hh4b_kinSel::writeHistos(std::string histfilename, bool isData){
   h_fJets_pT->Write();
   h_fJets_eta->Write();
   h_fJets_CSV->Write();
+  h_fJets_Centr->Write();
   h_naJets->Write();
   h_aJets_mass->Write();
   h_aJets_pT->Write();
   h_aJets_eta->Write();
   h_aJets_CSV->Write();
+  h_fJet1_mass->Write();
+  h_fJet2_mass->Write();
+  h_fJet3_mass->Write();
+  h_fJet4_mass->Write();
   h_fJet1_pT->Write();
   h_fJet2_pT->Write();
   h_fJet3_pT->Write();
@@ -865,13 +850,14 @@ void hh4b_kinSel::writeHistos(std::string histfilename, bool isData){
   h_fJet2_CSV->Write();
   h_fJet3_CSV->Write();
   h_fJet4_CSV->Write();
-  //h_3Jets_avgCSV->Write();
-  //h_3Jets_minCSV->Write();
+  h_fJet3avg_CSV->Write();
+  h_fJet3min_CSV->Write();
   //h_nJets_90->Write();
   h_H_mass->Write();
   h_H_pT->Write();
   h_H_Eta->Write();
   h_H_Phi->Write();
+  h_H_CosThSt->Write();
   h_H1_mass->Write();
   h_H1_pT->Write();
   h_H1_Eta->Write();
@@ -883,6 +869,8 @@ void hh4b_kinSel::writeHistos(std::string histfilename, bool isData){
   h_H1_deltaPhiVSpT->Write();
   h_H2_mass->Write();
   h_H2_pT->Write();
+  h_H2_Eta->Write();
+  h_H2_Phi->Write();
   h_H2_CosThSt->Write();
   h_H2_deltaR->Write();
   h_H2_deltaPhi->Write();
