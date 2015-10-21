@@ -12,3 +12,6 @@ merge.sh
 *.backup
 *.png
 *.pdf
+*TMVA-v4.2.0/
+*mmva
+*.tgz
