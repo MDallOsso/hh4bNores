@@ -11,6 +11,18 @@ double dijetM_cut_high = 150.;
 //Jet
 typedef struct{
   //double CMVA;
+  double mass;
+  double pT;
+  double eta;
+  double phi;
+  double CosThSt;
+  double dR;
+  double dPhi;
+  double dEta;
+} diJet;
+
+//Jet
+typedef struct{
   double CSV;
   double mass;
   double pT;
@@ -23,6 +35,17 @@ typedef struct{
   TH1F* h;
   double norm;
 } Jet4Plot;
+
+
+//get_jetVector --> get TLorentzVector from Jet
+diJet get_diJet(TLorentzVector* diJ_P){ 
+  diJet diJ;
+  diJ.mass = diJ_P->M();
+  diJ.pT = diJ_P->Pt();
+  diJ.eta = diJ_P->Eta();
+  diJ.phi = diJ_P->Phi();
+  return diJ;
+}
 
 //get_jetVector --> get TLorentzVector from Jet
 TLorentzVector get_jetVector(Jet* jj){ 

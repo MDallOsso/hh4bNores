@@ -1,5 +1,82 @@
 #define hh4b_kinSel_H
 
+//just to have order
+//--------------------
+class hh4b_kinSel{
+
+  private:
+//variables
+//-------------------
+  ULong64_t evt;
+  unsigned int run; //lumi
+  int nPV, nJet, nGenH, nGenBfHafterISR;    
+  float weightPU, Vtype_, met_pt, met_eta, met_phi, met_mass, ht;
+  float HLT_HH4bAll, HLT_BIT_QuadTriple, HLT_BIT_QuadDouble, HLT_BIT_DoubleTriple, HLT_BIT_DoubleDouble;
+//float Jet_btagCMVA[25], Jet_rawPt[25],Jet_mcPt[25],Jet_mcFlavour[25]
+//float Jet_corr_JECUp[25], Jet_corr_JECDown[25], Jet_corr[25], Jet_mcMatchId[25], Jet_hadronFlavour[25],Jet_btagProb[25];
+//float Jet_btagBProb[25], Jet_btagnew[25],Jet_btagCSVV0[25], Jet_chHEF[25],Jet_neHEF[25],Jet_chEmEF[25],Jet_neEmEF[25]
+//float Jet_chMult[25],Jet_leadTrackPt[25],Jet_mcEta[25],Jet_mcPhi[25],Jet_mcM[25];
+  float Jet_id[25],Jet_puId[25],Jet_btagCSV[25];
+  float Jet_pt[25],Jet_eta[25],Jet_phi[25],Jet_mass[25];  
+  float GenH_pt[2], GenH_mass[2], GenH_eta[2], GenH_phi[2], GenH_status[2];
+  float nGenBfH[4], GenBfH_pdgId[4],GenBfH_pt[4],GenBfH_eta[4],GenBfH_phi[4],GenBfH_mass[4], GenBfH_status[4], GenBfH_charge[4];
+  float GenBfHafterISR_pdgId[4],GenBfHafterISR_pt[4],GenBfHafterISR_eta[4],GenBfHafterISR_phi[4],GenBfHafterISR_mass[4];
+
+//debug...
+  int nCut0=0, nCut1=0, nCut2=0, nCut3=0, nCut4=0, nCut4a=0, nCut4b=0, nCut5=0, nCut5a=0, nCut5b=0, HHf=0;
+  int nJets_InAcc=0;
+  int effB1=0, effB2=0;
+  int effBH1_wind=0, effBH2_wind=0;
+  double N_all [8]={}; //ok
+  double Nt_all [8]={};
+  double N_all_b [8]={};
+  double Nt_all_b [8]={};
+  double Nmatched [8]={};
+  double Ntr [8]={};
+  double nM[binPt][binCSV][binEta];
+  double nA[binPt][binCSV][binEta];
+  double R[binPt][binCSV][binEta];
+  int nRmaxOk = 0, nMCTruth =0, nCSVOk =0, nMatrCSVOk=0, nMixJets=0, errfJets=0;
+  double Rave = 9999;
+  int InTrue=99, In=99, jet4index=99;
+  vector<int> fJetsIndex;
+
+  //variables for histos
+  diJet H1, H2, HH; //Higgs and di-Higgs candidates per event
+  TLorentzVector H1_P, H2_P, HH_P, met; //Higgs and di-Higgs candidates per event
+  std::vector<TLorentzVector> jets_inAcc_P;   //jets in acc sorted by csv - per event
+  std::vector<TLorentzVector> fJets_P; //final 4 jets per event
+  std::vector<Jet>  fJets; //final 4 jets per event
+  std::vector<Jet>  aJets; //additional jets per event
+  std::vector<Jet>  jets_inAcc; //jet vector -> baseline in the event loop - per event
+  std::vector<Jet>  jets_all; //all jets after trigger - per event
+
+ //debug
+  Jet fJet1, fJet2, fJet3, fJet4;
+
+
+//----------------------------
+
+  public:
+    hh4b_kinSel(std::string , bool , std::string , int =2, int =0, std::string ="");
+// void    doKinSel(std::string , bool , std::string , int =2, int =0, std::string ="");
+    ~hh4b_kinSel();
+
+    double fJet3avgCSV;
+    double fJet3minCSV;
+
+    void anglesComputation();
+    void setBranches(bool, TTree*);   
+    bool readMatrix( std::string, std::string );
+    double selectBestDiJets (int );
+    void fillHistos(bool );   
+    void writeHistos(std::string, bool );   
+    string jet4SelectionMethod(int );  
+    void createTree(TTree*);
+    //int dokinSel(std::string , bool , std::string , int =2, int =0, std::string ="");
+};
+
+
 // book Histos
 //--------------
 TH1F *h_nPV = new TH1F("h_nPV", "# of Primary Vertices; nPV", 10, 0., 10.);
@@ -176,54 +253,3 @@ TH2F *h2_HCSV_HRL_mass = new TH2F("h2_HCSV_HRL_mass", " mh mh; <m_{H_{RL}}> (GeV
 TH1F *h_Jets_CSV_all=new TH1F("h_Jets_CSV_all", "Jets_CSV_all; all jets CSV", 50, 0., 1.); //debug--
 
 //--------------------------------------
-
-//variables
-//-------------------
-//ULong64_t evt;
-  //unsigned int run, lumi;
-  int nPV, nJet, nGenH, nGenBfHafterISR;    
-//float Jet_btagCMVA[25], Jet_rawPt[25],Jet_mcPt[25],Jet_mcFlavour[25]
-//float Jet_corr_JECUp[25], Jet_corr_JECDown[25], Jet_corr[25], Jet_mcMatchId[25], Jet_hadronFlavour[25],Jet_btagProb[25];
-//float Jet_btagBProb[25], Jet_btagnew[25],Jet_btagCSVV0[25], Jet_chHEF[25],Jet_neHEF[25],Jet_chEmEF[25],Jet_neEmEF[25]
-//float Jet_chMult[25],Jet_leadTrackPt[25],Jet_mcEta[25],Jet_mcPhi[25],Jet_mcM[25];
-  float Jet_id[25],Jet_puId[25],Jet_btagCSV[25];
-  float Jet_pt[25],Jet_eta[25],Jet_phi[25],Jet_mass[25];  
-  float GenH_pt[2], GenH_mass[2], GenH_eta[2], GenH_phi[2], GenH_status[2];
-  float nGenBfH[4], GenBfH_pdgId[4],GenBfH_pt[4],GenBfH_eta[4],GenBfH_phi[4],GenBfH_mass[4], GenBfH_status[4], GenBfH_charge[4];
-  float GenBfHafterISR_pdgId[4],GenBfHafterISR_pt[4],GenBfHafterISR_eta[4],GenBfHafterISR_phi[4],GenBfHafterISR_mass[4];
-  float weightPU, Vtype_, met_pt, met_eta, met_phi, met_mass, ht;
-  float HLT_HH4bAll, HLT_BIT_QuadTriple, HLT_BIT_QuadDouble, HLT_BIT_DoubleTriple, HLT_BIT_DoubleDouble;
-
-  int nCut0=0, nCut1=0, nCut2=0, nCut3=0, nCut4=0, nCut4a=0, nCut5=0, nCut5a=0, nCut5b=0, HHf=0;
-  int nJets_InAcc=0;
-  int effB1=0, effB2=0;
-  int effBH1_wind=0, effBH2_wind=0;
-  double N_all [8]={}; //ok
-  double Nt_all [8]={};
-  double N_all_b [8]={};
-  double Nt_all_b [8]={};
-  double Nmatched [8]={};
-  double Ntr [8]={};
-  double nM[binPt][binCSV][binEta];
-  double nA[binPt][binCSV][binEta];
-  double R[binPt][binCSV][binEta];
-  int nRmaxOk = 0, nMCTruth =0, nCSVOk =0, nMatrCSVOk=0, nMixJets=0, errfJets=0;
-  double Rave = 9999;
-  int InTrue=99, In=99, jet4index=99;
-  vector<int> fJetsIndex;
-
-  //variables for histos
-  TLorentzVector H1, H2, HH, met; //Higgs and di-Higgs candidates per event
-  vector<TLorentzVector> jets_inAcc_P;   //jets in acc sorted by csv - per event
-  vector<TLorentzVector> fJets_P; //final 4 jets per event
-  vector<Jet> fJets; //final 4 jets per event
-  vector<Jet> aJets; //additional jets per event
-  vector<Jet> jets_inAcc; //jet vector -> baseline in the event loop - per event
-  vector<Jet> jets_all; //all jets after trigger - per event
-
-  double deltaR_HH=-99.,   deltaR_H1=-99.,   deltaR_H2=-99.;
-  double deltaPhi_HH=-99., deltaPhi_H1=-99., deltaPhi_H2=-99.; 
-  double deltaEta_HH=-99., deltaEta_H1=-99., deltaEta_H2=-99.; 
-  double H1_CosThSt=-99., H2_CosThSt=-99.;
-
-//----------------------------

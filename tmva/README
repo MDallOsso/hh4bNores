@@ -1,0 +1,12 @@
+
+Oct 19th 2015
+
+###to use TMVA tool
+- download package from official web site
+- tar -zxvf TMVA-v4.2.0.tgz
+- cd TMVA-v4.2.0
+- make
+- cd test
+- source setup.sh
+## root 5 needed because it is still not compatible with ROOT6 --> CMSSW_7_2_2_patch2 used.
+(src/KDEKernel.cxx:94:30: error: 'Erf' is not a member of 'TMath' if (xs2>0 ) return 0.5*TMath::Erf(xs2);)
