@@ -40,20 +40,19 @@ class hh4b_kinSel{
   double Rave = 9999;
   int InTrue=99, In=99, jet4index=99;
   vector<int> fJetsIndex;
+//----------
 
   //variables for histos
   diJet H1, H2, HH; //Higgs and di-Higgs candidates per event
   TLorentzVector H1_P, H2_P, HH_P, met; //Higgs and di-Higgs candidates per event
   std::vector<TLorentzVector> jets_inAcc_P;   //jets in acc sorted by csv - per event
   std::vector<TLorentzVector> fJets_P; //final 4 jets per event
+  std::vector<Jet>  fJets_CSV; //final 4 jets sorted in CSV
   std::vector<Jet>  fJets; //final 4 jets per event
   std::vector<Jet>  aJets; //additional jets per event
   std::vector<Jet>  jets_inAcc; //jet vector -> baseline in the event loop - per event
   std::vector<Jet>  jets_all; //all jets after trigger - per event
-
- //debug
-  Jet fJet1, fJet2, fJet3, fJet4;
-
+  Jet fJet1_CSV, fJet2_CSV, fJet3_CSV, fJet4_CSV;
 
 //----------------------------
 
@@ -62,8 +61,8 @@ class hh4b_kinSel{
 // void    doKinSel(std::string , bool , std::string , int =2, int =0, std::string ="");
     ~hh4b_kinSel();
 
-    double fJet3avgCSV;
-    double fJet3minCSV;
+    double fJets3avgCSV, fJets3minCSV, fJets4avgCSV;
+    double Centr;
 
     void anglesComputation();
     void setBranches(bool, TTree*);   
@@ -73,6 +72,7 @@ class hh4b_kinSel{
     void writeHistos(std::string, bool );   
     string jet4SelectionMethod(int );  
     void createTree(TTree*);
+    void printOutput(std::string, bool );
     //int dokinSel(std::string , bool , std::string , int =2, int =0, std::string ="");
 };
 
@@ -108,20 +108,21 @@ TH1F *h_JetsAcc_CSV = new TH1F("h_JetsAcc_CSV", "jets in acc.; Jets in Acc CSV",
 //TH1F *h_JetsAcc_HT = new TH1F("h_Jets_HT", "h_Jets_HT; allJets HT (GeV/c)", 50, 0., 900.);
 
 TH1F *h_nfJets = new TH1F("h_nfJets", "# Final Jets; # jets", 5, 0., 5.);
-TH1F *h_fJets_mass = new TH1F("h_fJets_mass", "final jets; Final Jets m (GeV/c^{2})", 100, 0., 150.);
-TH1F *h_fJets_pT = new TH1F("h_fJets_pT", "final jets; Final Jets p_{T} (GeV/c)", 100, 0., 900.);
+TH1F *h_fJets_mass = new TH1F("h_fJets_mass", "final jets; Final Jets m (GeV/c^{2})", 100, 0., 100.);
+TH1F *h_fJets_pT = new TH1F("h_fJets_pT", "final jets; Final Jets p_{T} (GeV/c)", 100, 0., 700.);
 TH1F *h_fJets_eta = new TH1F("h_fJets_eta","final jets; Final Jets #eta", 100, -4., 4.);
-TH1F *h_fJets_CSV = new TH1F("h_fJets_CSV", "final jets; Final Jets CSV", 200, 0., 1.);
+TH1F *h_fJets_CSV = new TH1F("h_fJets_CSV", "final jets; Final Jets CSV", 100, 0., 1.);
 TH1F *h_fJets_Centr = new TH1F("h_fJets_Centr", "final jets; Final Jets C", 100, 0., 1.);
 
-TH1F *h_fJet1_mass = new TH1F("h_fJet1_mass", "Jet 1; jet1 m (GeV/c^{2})", 100, 0., 150.);
-TH1F *h_fJet2_mass = new TH1F("h_fJet2_mass", "Jet 2; jet2 m (GeV/c^{2})", 100, 0., 150.);
-TH1F *h_fJet3_mass = new TH1F("h_fJet3_mass", "Jet 3; jet3 m (GeV/c^{2})", 100, 0., 150.);
-TH1F *h_fJet4_mass = new TH1F("h_fJet4_mass", "Jet 4; jet4 m (GeV/c^{2})", 100, 0., 150.);
-TH1F *h_fJet1_pT = new TH1F("h_fJet1_pT", "Jet 1; jet1 p_{T} (GeV/c)", 100, 0., 900.);
-TH1F *h_fJet2_pT = new TH1F("h_fJet2_pT", "Jet 2; jet2 p_{T} (GeV/c)", 100, 0., 900.);
-TH1F *h_fJet3_pT = new TH1F("h_fJet3_pT", "Jet 3; jet3 p_{T} (GeV/c)", 100, 0., 900.);
-TH1F *h_fJet4_pT = new TH1F("h_fJet4_pT", "Jet 4; jet4 p_{T} (GeV/c)", 100, 0., 900.);
+//sorted in CSV ----
+TH1F *h_fJet1_mass = new TH1F("h_fJet1_mass", "Jet 1; jet1 m (GeV/c^{2})", 100, 0., 100.);
+TH1F *h_fJet2_mass = new TH1F("h_fJet2_mass", "Jet 2; jet2 m (GeV/c^{2})", 100, 0., 100.);
+TH1F *h_fJet3_mass = new TH1F("h_fJet3_mass", "Jet 3; jet3 m (GeV/c^{2})", 100, 0., 100.);
+TH1F *h_fJet4_mass = new TH1F("h_fJet4_mass", "Jet 4; jet4 m (GeV/c^{2})", 100, 0., 100.);
+TH1F *h_fJet1_pT = new TH1F("h_fJet1_pT", "Jet 1; jet1 p_{T} (GeV/c)", 100, 0., 700.);
+TH1F *h_fJet2_pT = new TH1F("h_fJet2_pT", "Jet 2; jet2 p_{T} (GeV/c)", 100, 0., 700.);
+TH1F *h_fJet3_pT = new TH1F("h_fJet3_pT", "Jet 3; jet3 p_{T} (GeV/c)", 100, 0., 700.);
+TH1F *h_fJet4_pT = new TH1F("h_fJet4_pT", "Jet 4; jet4 p_{T} (GeV/c)", 100, 0., 700.);
 TH1F *h_fJet1_Eta=new TH1F("h_fJet1_Eta", "Jet 1; jet1 #eta", 100, -4., 4.);
 TH1F *h_fJet2_Eta=new TH1F("h_fJet2_Eta", "Jet 2; jet2 #eta", 100, -4., 4.);
 TH1F *h_fJet3_Eta=new TH1F("h_fJet3_Eta", "Jet 3; jet3 #eta", 100, -4., 4.);
@@ -130,8 +131,9 @@ TH1F *h_fJet1_CSV=new TH1F("h_fJet1_CSV", "Jet 1; jet1 CSV", 100, 0., 1.);
 TH1F *h_fJet2_CSV=new TH1F("h_fJet2_CSV", "Jet 2; jet2 CSV", 100, 0., 1.);
 TH1F *h_fJet3_CSV=new TH1F("h_fJet3_CSV", "Jet 3; jet3 CSV", 100, 0., 1.);
 TH1F *h_fJet4_CSV=new TH1F("h_fJet4_CSV", "Jet 4; jet4 CSV", 100, 0., 1.);
-TH1F *h_fJet3avg_CSV=new TH1F("h_fJet3avg_CSV", "first 3 Jets; avg jet CSV", 100, 0., 1.);
-TH1F *h_fJet3min_CSV=new TH1F("h_fJet3min_CSV", "first 3 Jets; min jet CSV", 100, 0., 1.);
+TH1F *h_fJets3avg_CSV=new TH1F("h_fJets3avg_CSV", "first 3 Jets; avg 3 jets CSV", 100, 0., 1.);
+TH1F *h_fJets3min_CSV=new TH1F("h_fJets3min_CSV", "first 3 Jets; min 3 jets CSV", 100, 0., 1.);
+TH1F *h_fJets4avg_CSV=new TH1F("h_fJets4avg_CSV", "4 Jets; avg 4 jets CSV", 100, 0., 1.);
 
 TH1F *h_naJets = new TH1F("h_naJets", "additional jets; # additional jets", 18, 0., 18.);
 TH1F *h_aJets_mass = new TH1F("h_aJets_mass", "additional jets; additional Jets m (GeV/c^{2})", 100, 0., 150.);
@@ -153,6 +155,8 @@ TH1F *h_H1_CosThSt=new TH1F("h_H1_CosTheta*", "H1 candidates; H1 |cos#theta*|", 
 TH1F *h_H1_deltaR = new TH1F("h_H1_DR","H1 candidates; H1 #DeltaR", 100, 0., 7.);
 TH1F *h_H1_deltaPhi = new TH1F("h_H1_DPhi","H1 candidates; H1 #Delta#phi", 100, -3.5, 3.5);
 TH1F *h_H1_deltaEta = new TH1F("h_H1_DEta","H1 candidates; H1 #Delta#eta", 100, -6., 6.);
+TH1F *h_H1_deltaPhi_abs = new TH1F("h_H1_DPhi_abs","H1 candidates; H1 |#Delta#phi|", 50, 0., 3.5);
+TH1F *h_H1_deltaEta_abs = new TH1F("h_H1_DEta_abs","H1 candidates; H1 |#Delta#eta|", 50, 0., 6.);
 TH2F *h_H1_deltaPhiVSpT = new TH2F("h_H1_deltaPhiVSpT", "H1 candidates; H1 #Delta#phi; H1 p_{T} (GeV/c)", 200, 0., 3.5, 200, 0., 600.);
 
 TH1F *h_H2_mass=new TH1F("h_H2_mass", "H2 candidates; H2 m (GeV/c^{2})", 200, 0., 1000.);
@@ -163,6 +167,8 @@ TH1F *h_H2_CosThSt=new TH1F("h_H2_CosTheta*", "H2 candidates; H2 |cos#theta*|", 
 TH1F *h_H2_deltaR = new TH1F("h_H2_DR","H2 candidates; H2 #DeltaR", 100, 0., 7.);
 TH1F *h_H2_deltaPhi = new TH1F("h_H2_DPhi","H2 candidates; H2 #Delta#phi", 100, -3.5, 3.5);
 TH1F *h_H2_deltaEta = new TH1F("h_H2_DEta","H2 candidates; H2 #Delta#eta", 100, -6., 6.);
+TH1F *h_H2_deltaPhi_abs = new TH1F("h_H2_DPhi_abs","H2 candidates; H2 |#Delta#phi|", 50, 0., 3.5);
+TH1F *h_H2_deltaEta_abs = new TH1F("h_H2_DEta_abs","H2 candidates; H2 |#Delta#eta|", 50, 0., 6.);
 TH2F *h_H2_deltaPhiVSpT = new TH2F("h_H2_deltaPhiVSpT", "H2 candidates; H2 #Delta#phi; H2 p_{T} (GeV/c)", 200, 0., 3.5, 200, 0., 600.);
 
 TH1F *h_HH_mass = new TH1F("h_HH_mass"," di-Higgs candidates; HH m (GeV/c^{2})" , 100, 0., 1500.); 
@@ -172,6 +178,8 @@ TH1F *h_HH_Phi=new TH1F("h_HH_Phi", "di-Higgs candidates; HH #phi", 100, -3.5, 3
 TH1F *h_HH_deltaR = new TH1F("h_HH_DR","di-Higgs candidates; HH #DeltaR", 100, 0., 7.);
 TH1F *h_HH_deltaPhi = new TH1F("h_HH_DPhi","di-Higgs candidates; HH #Delta#phi", 100, -3.5, 3.5);
 TH1F *h_HH_deltaEta = new TH1F("h_HH_DEta","di-Higgs candidates; HH #Delta#eta", 100, -6., 6.);
+TH1F *h_HH_deltaPhi_abs = new TH1F("h_HH_DPhi_abs","di-Higgs candidates; HH |#Delta#phi|", 50, 0., 3.5);
+TH1F *h_HH_deltaEta_abs = new TH1F("h_HH_DEta_abs","di-Higgs candidates; HH |#Delta#eta|", 50, 0., 6.);
 //TH1F *h_HH_CSV = new TH1F("h_HH_CSV","di-Higgs candidates; Sum CSV | between the two higgs ", 70, -4., 4.); 
 TH2F *h_H1_H2_mass = new TH2F("h_H1_H2_mass", " mh mh; m_{H_{lead}} (GeV/c^{2}); m_{H_{sublead}} (GeV/c^{2})", 300, 0., 600., 300, 0., 600.);
 

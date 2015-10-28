@@ -22,17 +22,18 @@
 
 // selection parameters:
 //-------------------------
-bool yesTrg_hh4bAll = true;
-bool yesTrg_hh4bQuadTriple = false;
-bool yesTrg_hh4bQuadDouble = false; //for trg efficiency
-bool yesTrg_hh4bDoubleTriple = false;
-bool yesTrg_hh4bDoubleDouble = false; //for trg efficiency
-bool yesTrg_hh4bFinal = false; //only (QuadTriple || DoubleTriple)
+bool yesTrg_hh4bFinal = true; //only (QuadTriple || DoubleTriple)
 
-double Jet_pt_cut_low = 30.; //30.;
-double deltaRCut = 0.5; //0.5
-int nJets_cut = 4; //3
-double Jet_eta_cut = 10.; //2.5 - 10=noCut
+bool yesTrg_hh4bQuadTriple = false;
+bool yesTrg_hh4bDoubleTriple = false;
+bool yesTrg_hh4bQuadDouble = false; //for trg efficiency
+bool yesTrg_hh4bDoubleDouble = false; //for trg efficiency
+bool yesTrg_hh4bAll = false; //include all the 4th paths
+
+double Jet_pt_cut_low = 20.;
+double deltaRCut = 0.5; //0.5 - for matching
+int nJets_cut = 4;
+double Jet_eta_cut = 10.;
 double CSV_cut = 0.605;  //Run2: low 0.605; medium 0.890; high 0.970. Run1: low 0.679 (used in the first presentation).
 
 // matrix parameters  --> needed?...
@@ -42,12 +43,13 @@ static const int binEta = 4;
 
 // environment
 //---------------
-static const std::string utilsFld="../utils/";
-static const std::string dataFld="../data/";
-static const std::string plotsFld="plots/";
-static const std::string matrixFld="jetsMatch_matrix/";
-static const std::string subdataFld=dataFld+"vhbb_heppy_V13/";
+static const std::string frameworkVersionFld="V14/";  //WARNING: CHANGE ME!! /V13
 
+static const std::string utilsFld="../utils/";
+static const std::string dataFld="../data/"+frameworkVersionFld;
+static const std::string subdataFld=dataFld+"officialNtuples/";
+static const std::string plotsFld="plots/"+frameworkVersionFld;
+static const std::string matrixFld="jetsMatch_matrix/";
 
 // struct and common functions
 #include "../utils/hh4bStructs.h"
@@ -68,9 +70,11 @@ hh4b_kinSel::hh4b_kinSel(std::string sample, bool isData, std::string opt, int f
   //h_nPV_weighted->Sumw2();
 
   std::string inputfilename;  
+  //inputfilename =  "root://xrootd.ba.infn.it//store/user/arizzi/VHBBHeppyV14/GluGluToBulkGravitonToHHTo4B_M-260_narrow_13TeV-madgraph/VHBB_HEPPY_V14_GluGluToBulkGravitonToHHTo4B_M-260_narrow_13TeV-madgraph__RunIISpring15MiniAODv2-74X_mcRun2_asymptotic_v2-v1/151024_174851/0000/tree_1.root";
   inputfilename = subdataFld+"tree_"+sample+".root"; 
 
-  TFile * f = new TFile(inputfilename.c_str());
+  TFile * f = TFile::Open(inputfilename.c_str());
+  if(!f) return; //debug (return..)
   f->cd();	
   TTree *tree=(TTree*)f->Get("tree");
   std::cout<<"Opened input file "<<inputfilename<<std::endl;
@@ -83,8 +87,8 @@ hh4b_kinSel::hh4b_kinSel(std::string sample, bool isData, std::string opt, int f
   //output file
   std::string eve = "";
   if(maxEvents > 0) eve = "_" + to_string(maxEvents);
-  std::string outfilename=dataFld+"tree_Step1_"+sample+eve+".root";
-  TFile *outfile=new TFile(outfilename.c_str(), "recreate");
+  std::string outfilename=dataFld+"tree_Step1_"+sample+"_"+opt+eve+".root";
+  TFile *outfile=new TFile(outfilename.c_str(), "RECREATE"); //debug
 
   //output tree with brand new branches
   TTree *outtree = new TTree("tree", "tree_step1");
@@ -110,6 +114,7 @@ hh4b_kinSel::hh4b_kinSel(std::string sample, bool isData, std::string opt, int f
     jets_inAcc.clear();
     jets_inAcc_P.clear();
     fJets_P.clear();
+    fJets_CSV.clear();
     fJets.clear();
     aJets.clear();
     if((i%10000) == 0) cout << i <<endl;
@@ -357,21 +362,27 @@ hh4b_kinSel::hh4b_kinSel(std::string sample, bool isData, std::string opt, int f
           HHf++;                  
           jet4SelectionMethod(finalIndex); //to initialize jet4index
           selectBestDiJets(jet4index);     //to chose best di-jets
-          if(mAve == -1){ ++nCut4b; continue;}; //4th jet CSV<0
+          //if(mAve == -1){ ++nCut4b; continue;}; //4th jet CSV<0 -- not needed now
           //initialize higgs vectors
-          for(int i=0;i<4;i++) fJets.push_back(jets_inAcc[fJetsIndex[i]]);
-        //debug
-          fJet1 = fJets.at(0);
-          fJet2 = fJets.at(1);
-          fJet3 = fJets.at(2);
-          fJet4 = fJets.at(3);
+          for(int i=0;i<4;i++) {
+            fJets.push_back(jets_inAcc[fJetsIndex[i]]);
+            if(i<3) fJets_CSV.push_back(jets_inAcc[i]);
+            else fJets_CSV.push_back(jets_inAcc[fJetsIndex[i]]);
+          }
+        //debug - make it better
+          fJet1_CSV = fJets_CSV.at(0);
+          fJet2_CSV = fJets_CSV.at(1);
+          fJet3_CSV = fJets_CSV.at(2);
+          fJet4_CSV = fJets_CSV.at(3);
           for(int i=0;i<4;i++) fJets_P.push_back(jets_inAcc_P[fJetsIndex[i]]);
           for(std::vector<Jet>::iterator it = jets_inAcc.begin()+4 ; it != jets_inAcc.end(); ++it){ //additional jets
               aJets.push_back(*it);
           }
-          if(jets_inAcc_P[1].M() != fJets_P[1].M()) nMixJets++; //debug
-          fJet3avgCSV = (fJets[0].CSV+fJets[1].CSV+fJets[2].CSV)/3;
-          fJet3minCSV = std::min({fJets[0].CSV,fJets[1].CSV,fJets[2].CSV});
+          if(jets_inAcc_P[1].M() != fJets_P[1].M()) nMixJets++; //debug - to check
+          fJets3avgCSV = (fJets_CSV[0].CSV+fJets_CSV[1].CSV+fJets_CSV[2].CSV)/3;
+          fJets3minCSV = std::min({fJets_CSV[0].CSV,fJets_CSV[1].CSV,fJets_CSV[2].CSV});
+          fJets4avgCSV = (fJets_CSV[0].CSV+fJets_CSV[1].CSV+fJets_CSV[2].CSV+fJets_CSV[3].CSV)/4;
+          Centr = ((fJets_P[0].Pt()/fJets_P[0].E())+(fJets_P[1].Pt()/fJets_P[1].E())+(fJets_P[2].Pt()/fJets_P[2].E())+(fJets_P[3].Pt()/fJets_P[3].E()))/4; //Centrality
 
           //angles computation:     
           anglesComputation();
@@ -438,48 +449,65 @@ hh4b_kinSel::hh4b_kinSel(std::string sample, bool isData, std::string opt, int f
     } // sample splitting
   } // Event loop
 
+  // Some output (shell & log)  -- debug - put it into a function...
+  std::string logfilename;
+  if(maxEvents!=0) logfilename = plotsFld+"log_"+sample+"_"+opt+"_"+std::to_string(maxEvents)+".dat";
+  else logfilename = plotsFld+"log_"+sample+"_"+opt+".dat";
+//  printOutput(logfilename, isData);
+
+// on shell
+  //-----------
+  std::cout<<std::setprecision(2);
+  std::cout<<std::fixed;  
+  std::cout<< sample << " " << opt << " 4thJet:" << jet4SelectionMethod(finalIndex) << std::endl;
+  std::cout<<"0. Input = "<< nCut0 << std::endl;
+  std::cout<<"1. Trigger   = "<< nCut1 << " ,  " <<(float)nCut2/nCut0*100<<"%  " <<(float)nCut1/nCut0*100<<"%"<<std::endl;
+  //  std::cout<<"2. Number of events after Vtype     = "<< nCut2 << " ,  " <<(float)nCut2/nCut1*100<<"%  " <<(float)nCut2/nCut0*100<<"%"<<std::endl;
+  std::cout<<"2. 4 Jets in Acc = "<< nCut3 << " ,  " <<(float)nCut3/nCut2*100<<"%  " <<(float)nCut3/nCut0*100<<"%"<<std::endl;
+  std::cout<<"3. 3 Jets CSV = "<< nCut4 << " ,  " <<(float)nCut4/nCut3*100<<"%  " <<(float)nCut4/nCut0*100<<"%"<<std::endl;
+  //  std::cout<<"4. 4th CSV>0  = "<< (nCut4-nCut4b) << " ,  " <<(float)(nCut4-nCut4b)/nCut4*100<<"%  " <<(float)(nCut4-nCut4b)/nCut0*100<<"%"<<std::endl;
+  std::cout<<"HHfound = "<< HHf << " ,  " <<(float)HHf/nCut4*100<<"%  " <<(float)HHf/nCut0*100<<"%"<<std::endl;
+  //  std::cout<<"Number of events with only diJet1 in mass windows  = "<< (nCut5a-nCut5) << " ,  " << (float)(nCut5a-nCut5)/HHf*100<<"%  " << (float)(nCut5a-nCut5)/nCut0*100<<"%"<<std::endl;
+  //  std::cout<<"Number of events in mass windows   = "<< nCut5 << " ,  " <<(float)nCut5/(nCut5a-nCut5)*100<<"%  " <<(float)nCut5/nCut0*100<<"%"<<std::endl;
+  std::cout<<"In SR (elipse) = "<< nCut5b << " ,  " <<(float)nCut5b/HHf*100<<"%  " <<(float)nCut5b/nCut0*100<<"%"<<std::endl;
+  std::cout<<endl;
+
+  std::cout<<"# event with 'mixed' jets = " << nMixJets << std::endl;
+  cout << "# error fJets: " << errfJets << endl << endl;
   if(!isData){
     cout << "'ACCEPTANCE' (Ntrue/Nevents): " << (double)nMCTruth/nEvents*100 << endl;
     cout << "N true jets " << Ntr[0] << endl;
     cout << "nMCTruth " << nMCTruth << endl;
     cout << endl;
-  }
- 
-  h_Cuts->Fill(1,nCut0);
-  h_Cuts->Fill(3,nCut1);
-  h_Cuts->Fill(5,nCut2);
-  h_Cuts->Fill(7,nCut3);
-  h_Cuts->Fill(9,nCut4);  
-  h_Cuts->Fill(11,nCut4a);  
-  h_Cuts->Fill(13,HHf);
-  h_Cuts->Fill(15,nCut5a);
-  h_Cuts->Fill(17,nCut5);
-
-cout << "# error fJets: " << errfJets << endl;
-
-  //-----------------
-  // Some output
-  //-----------------
-  std::cout<<std::setprecision(2);
-  std::cout<<std::fixed;  
-  std::cout<< sample << " " << opt << " 4thJet:" << jet4SelectionMethod(finalIndex) << std::endl;
-  std::cout<<"00. Number of event with 'mixed' jets = " << nMixJets << std::endl;
-  std::cout<<"0. Number of events from input file = "<< nCut0 << std::endl;
-  std::cout<<"1. Number of events after trigger   = "<< nCut1 << " ,  " <<(float)nCut2/nCut0*100<<"%  " <<(float)nCut1/nCut0*100<<"%"<<std::endl;
-  std::cout<<"2. Number of events after Vtype     = "<< nCut2 << " ,  " <<(float)nCut2/nCut1*100<<"%  " <<(float)nCut2/nCut0*100<<"%"<<std::endl;
-  std::cout<<"3. Number of events after nJets_InAcc  = "<< nCut3 << " ,  " <<(float)nCut3/nCut2*100<<"%  " <<(float)nCut3/nCut0*100<<"%"<<std::endl;
-  std::cout<<"4. Number of events after bTag cut  = "<< nCut4 << " ,  " <<(float)nCut4/nCut3*100<<"%  " <<(float)nCut4/nCut0*100<<"%"<<std::endl;
-  std::cout<<"4b. Number of events after bTag>0 cut  = "<< (nCut4-nCut4b) << " ,  " <<(float)(nCut4-nCut4b)/nCut4*100<<"%  " <<(float)(nCut4-nCut4b)/nCut0*100<<"%"<<std::endl;
-  std::cout<<"Number of events after HHfound     = "<< HHf << " ,  " <<(float)HHf/nCut4*100<<"%  " <<(float)HHf/nCut0*100<<"%"<<std::endl;
-//  std::cout<<"Number of events with only diJet1 in mass windows  = "<< (nCut5a-nCut5) << " ,  " << (float)(nCut5a-nCut5)/HHf*100<<"%  " << (float)(nCut5a-nCut5)/nCut0*100<<"%"<<std::endl;
-//  std::cout<<"Number of events in mass windows   = "<< nCut5 << " ,  " <<(float)nCut5/(nCut5a-nCut5)*100<<"%  " <<(float)nCut5/nCut0*100<<"%"<<std::endl;
-  std::cout<<"Number of events in mass windows 2 (elipse) = "<< nCut5b << " ,  " <<(float)nCut5b/nCut5*100<<"%  " <<(float)nCut5b/nCut0*100<<"%"<<std::endl;
-  std::cout<<endl;
+  } 
 
 /*  std::cout<<"eff B1 for HHfound = "<<effB1<< "  " << (float)effB1/HHf*100 <<"%"<<std::endl;
   std::cout<<"eff B2 for HHfound = "<<effB2<< "  " << (float)effB2/HHf*100 <<"%"<<std::endl;
   std::cout<<"eff Bh1 in windows  = "<<effBH1_wind<< "  " << (float)effBH1_wind/nCut5*100 <<"%"<<std::endl;
   std::cout<<"eff Bh2 in windows  = "<<effBH2_wind<< "  " << (float)effBH2_wind/nCut5*100 <<"%"<<std::endl;*/
+
+  // on file
+  //-----------
+  ofstream ofs (logfilename, ofstream::out);
+  ofs<<setprecision(2);
+  ofs<<fixed;  
+  ofs<< sample << " " << opt << " 4thJet:" << jet4SelectionMethod(finalIndex) << endl;
+  ofs<<"Input    "<< nCut0 << endl;
+  ofs<<"Trigger    "<< nCut1 << "    " <<(float)nCut2/nCut0*100<< "    " <<(float)nCut1/nCut0*100<<endl;
+  ofs<<"4JetsInAcc    "<< nCut3 << "    " <<(float)nCut3/nCut2*100<< "    " <<(float)nCut3/nCut0*100<<endl;
+  ofs<<"3JetsCSV    "<< nCut4 << "    " <<(float)nCut4/nCut3*100<< "    " <<(float)nCut4/nCut0*100<<endl;
+  ofs<<"HH found     "<< HHf   << "    " <<(float)HHf/nCut4*100<< "    " <<(float)HHf/nCut0*100<<endl;
+  ofs<<"In SR (elipse)    "<< nCut5b << "    " <<(float)nCut5b/HHf*100<< "    " <<(float)nCut5b/nCut0*100<<endl;
+  ofs<<endl;
+
+  if(!isData){
+    ofs << "'ACCEPTANCE' (Ntrue/Nevents): " << (double)nMCTruth/nEvents*100 << endl;
+    ofs << "N true jets " << Ntr[0] << endl;
+    ofs << "nMCTruth " << nMCTruth << endl;
+    ofs << endl;
+  } 
+  ofs.close();
+//------------
 
   //write tree and close
   outtree->Write();
@@ -490,7 +518,10 @@ cout << "# error fJets: " << errfJets << endl;
   if(maxEvents!=0) histfilename = plotsFld+"Histograms_"+sample+"_"+opt+"_"+std::to_string(maxEvents)+".root";
   else histfilename = plotsFld+"Histograms_"+sample+"_"+opt+".root";
   writeHistos(histfilename, isData);
-  std::cout<<"Wrote output file "<<histfilename<<std::endl <<std::endl;
+  std::cout<<"Wrote output files: "<<endl;
+  std::cout<<histfilename<<std::endl;
+  std::cout<<logfilename<<std::endl;
+  std::cout<<outfilename<<std::endl <<std::endl;
 
 }
 //-----------
@@ -630,9 +661,16 @@ void hh4b_kinSel::anglesComputation(){
   H2.dPhi = fJets_P[2].DeltaPhi(fJets_P[3]);
   H1.dEta = fJets_P[0].Eta() - fJets_P[1].Eta();
   H2.dEta = fJets_P[2].Eta() - fJets_P[3].Eta();
+  H1.dPhi_abs = abs(H1.dPhi);
+  H2.dPhi_abs = abs(H2.dPhi);
+  H1.dEta_abs = abs(H1.dEta);
+  H2.dEta_abs = abs(H2.dEta);
   HH.dR = H1_P.DeltaR(H2_P);  
   HH.dPhi = H1_P.DeltaPhi(H2_P);  
-  HH.dEta = H1_P.Eta() - H2_P.Eta();  //debug
+  HH.dEta = H1_P.Eta() - H2_P.Eta();
+  HH.dPhi_abs = abs(HH.dPhi);
+  HH.dEta_abs = abs(HH.dEta);
+
 }
 //---------------
 
@@ -705,12 +743,14 @@ void hh4b_kinSel::createTree(TTree* outtree){
   outtree->Branch("fJets","std::vector<Jet>",&fJets);
   outtree->Branch("aJets","std::vector<Jet>",&aJets);
 //debug
-  outtree->Branch("fJet1","Jet",&fJet1);
-  outtree->Branch("fJet2","Jet",&fJet2);
-  outtree->Branch("fJet3","Jet",&fJet3);
-  outtree->Branch("fJet4","Jet",&fJet4);
-  outtree->Branch("fJet3avgCSV",&fJet3avgCSV);
-  outtree->Branch("fJet3CSV",&fJet3CSV);
+  outtree->Branch("fJet1","Jet",&fJet1_CSV);
+  outtree->Branch("fJet2","Jet",&fJet2_CSV);
+  outtree->Branch("fJet3","Jet",&fJet3_CSV);
+  outtree->Branch("fJet4","Jet",&fJet4_CSV);
+  outtree->Branch("fJets3avgCSV",&fJets3avgCSV);
+  outtree->Branch("fJets3minCSV",&fJets3minCSV);
+  outtree->Branch("fJets4avgCSV",&fJets4avgCSV);
+  outtree->Branch("Centr",&Centr);
 
   outtree->Branch("H1","diJet",&H1);
   outtree->Branch("H2","diJet",&H2);
@@ -738,15 +778,13 @@ void hh4b_kinSel::fillHistos(bool isData){
    }
    h_nJetsAcc->Fill(jets_inAcc.size());
 
-   double C = 0.;
    for(unsigned int i=0;i<fJets.size();i++) {  //4 final jets
      h_fJets_pT->Fill(fJets[i].pT);
      h_fJets_eta->Fill(fJets[i].eta);
      h_fJets_mass->Fill(fJets[i].mass);
      h_fJets_CSV->Fill(fJets[i].CSV);
-     //C += (fJets_P[i].Pt/fJets_P[i].E()); //debug!
    }
-   h_fJets_Centr->Fill(C/4); //sum over 4 jets
+   h_fJets_Centr->Fill(Centr); //sum over 4 jets
    h_nfJets->Fill(fJets.size());
 
    for(std::vector<Jet>::iterator it = aJets.begin() ; it != aJets.end(); ++it){ //additional jets
@@ -756,25 +794,26 @@ void hh4b_kinSel::fillHistos(bool isData){
      h_aJets_CSV->Fill((*it).CSV);
    }
    h_naJets->Fill(aJets.size());
-
-   h_fJet1_mass->Fill(fJets[0].mass);
-    h_fJet2_mass->Fill(fJets[1].mass);
-    h_fJet3_mass->Fill(fJets[2].mass);
-    h_fJet4_mass->Fill(fJets[3].mass);
-    h_fJet1_pT->Fill(fJets[0].pT);
-    h_fJet2_pT->Fill(fJets[1].pT);
-    h_fJet3_pT->Fill(fJets[2].pT);
-    h_fJet4_pT->Fill(fJets[3].pT);
-    h_fJet1_Eta->Fill(fJets[0].eta);
-    h_fJet2_Eta->Fill(fJets[1].eta);
-    h_fJet3_Eta->Fill(fJets[2].eta);
-    h_fJet4_Eta->Fill(fJets[3].eta);
-    h_fJet1_CSV->Fill(fJets[0].CSV);
-    h_fJet2_CSV->Fill(fJets[1].CSV);
-    h_fJet3_CSV->Fill(fJets[2].CSV);
-    h_fJet4_CSV->Fill(fJets[3].CSV);	
-    h_fJet3avg_CSV->Fill(fJet3avgCSV); //avg of first 3 jets
-    h_fJet3min_CSV->Fill(fJet3minCSV); //minimum CSV of first 3 jets
+   //final jets sorted in CSV ---
+   h_fJet1_mass->Fill(fJets_CSV[0].mass);
+    h_fJet2_mass->Fill(fJets_CSV[1].mass);
+    h_fJet3_mass->Fill(fJets_CSV[2].mass);
+    h_fJet4_mass->Fill(fJets_CSV[3].mass);
+    h_fJet1_pT->Fill(fJets_CSV[0].pT);
+    h_fJet2_pT->Fill(fJets_CSV[1].pT);
+    h_fJet3_pT->Fill(fJets_CSV[2].pT);
+    h_fJet4_pT->Fill(fJets_CSV[3].pT);
+    h_fJet1_Eta->Fill(fJets_CSV[0].eta);
+    h_fJet2_Eta->Fill(fJets_CSV[1].eta);
+    h_fJet3_Eta->Fill(fJets_CSV[2].eta);
+    h_fJet4_Eta->Fill(fJets_CSV[3].eta);
+    h_fJet1_CSV->Fill(fJets_CSV[0].CSV);
+    h_fJet2_CSV->Fill(fJets_CSV[1].CSV);
+    h_fJet3_CSV->Fill(fJets_CSV[2].CSV);
+    h_fJet4_CSV->Fill(fJets_CSV[3].CSV);	
+    h_fJets3avg_CSV->Fill(fJets3avgCSV);
+    h_fJets3min_CSV->Fill(fJets3minCSV);
+    h_fJets4avg_CSV->Fill(fJets4avgCSV);
     h_H1_mass->Fill(H1.mass);
     h_H1_pT->Fill(H1.pT);
     h_H1_Eta->Fill(H1.eta);
@@ -813,6 +852,16 @@ void hh4b_kinSel::fillHistos(bool isData){
     h_HH_deltaEta->Fill(HH.dEta);
     //int region=withinRegion(H1_P.mass(), H2_P.mass(), 17.5, 37.5, 125, 125);	
    h_MET->Fill(met.E());     
+  
+  h_Cuts->Fill(1,nCut0);
+  h_Cuts->Fill(3,nCut1);
+  //h_Cuts->Fill(5,nCut2);
+  h_Cuts->Fill(5,nCut3);
+  h_Cuts->Fill(7,nCut4);  
+  //h_Cuts->Fill(11,nCut4b);  
+  h_Cuts->Fill(9,HHf);
+  h_Cuts->Fill(11,nCut5b);
+  //  h_Cuts->Fill(17,nCut5);
 }
 //--------------
 
@@ -862,9 +911,9 @@ void hh4b_kinSel::writeHistos(std::string histfilename, bool isData){
   h_fJet2_CSV->Write();
   h_fJet3_CSV->Write();
   h_fJet4_CSV->Write();
-  h_fJet3avg_CSV->Write();
-  h_fJet3min_CSV->Write();
-  //h_nJets_90->Write();
+  h_fJets3avg_CSV->Write();
+  h_fJets3min_CSV->Write();
+  h_fJets4avg_CSV->Write();
   h_H_mass->Write();
   h_H_pT->Write();
   h_H_Eta->Write();
@@ -922,6 +971,11 @@ void hh4b_kinSel::writeHistos(std::string histfilename, bool isData){
 
   tFile->Write();
   tFile->Close();
+}
+
+void hh4b_kinSel::printOutput(std::string logfilename, bool isData){ //improve...
+
+  
 }
 
 

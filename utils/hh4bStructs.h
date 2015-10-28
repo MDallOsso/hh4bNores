@@ -16,9 +16,11 @@ typedef struct{
   double eta;
   double phi;
   double CosThSt;
-  double dR;
+  double dR; 
   double dPhi;
   double dEta;
+  double dPhi_abs; //modulo
+  double dEta_abs; //modulo
 } diJet;
 
 //Jet

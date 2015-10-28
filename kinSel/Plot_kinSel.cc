@@ -2,6 +2,7 @@
 // Make plots from Step1 -> KINEMATIC SELECTION
 //  Author: Martino Dall'Osso
 //    Oct 14th, 2015
+//      Plot_kinSel("BTagCSVRun2015C","M-260","BTagCSVRun2015C", "pT20CSVL", 1)
 //----------------------------------------------------------------
 
 #include <TH1F.h>
@@ -18,6 +19,7 @@
 #include <TROOT.h>
 #include <TStyle.h>
 #include <TLegend.h>
+#include <TPaletteAxis.h>
 #include <TKey.h>
 
 // matrix parameters  --> needed only for the header..
@@ -32,9 +34,11 @@ static const int colors[] = {kBlack, kOrange+2, kBlue, kCyan+2, kGreen-1, kRed, 
                 kViolet-4, kAzure-4, kSpring-4, kYellow-4, kGreen-4};
 const int maxCol = 36;
 
-static const std::string plotsFld="plots/";
-static const TString OutFld="plots/"; //debug!!
-TString plotFld = "";
+static const std::string frameworkVersionFld="V14/";  //WARNING: CHANGE ME!!
+
+static const std::string plotsFld="plots/"+frameworkVersionFld;
+static const TString OutFld="plots/"+frameworkVersionFld; //debug!!
+TString plotSubFld = "";
 #include "../utils/hh4bStructs.h"
 #include "hh4b_13TeV_kinSel.h" //Histos are here
 
@@ -55,14 +59,8 @@ class Plot_kinSel{
     Plot_kinSel(std::string ,std::string , TString,  std::string , int =0);
     ~Plot_kinSel();
     
-//    void setBranches(bool, TTree*);   
-//    bool readMatrix( std::string, std::string );
-//    double selectBestDiJets (int );
-//    void fillHistos(bool );   
     void drawCMSprel(TString);
-    //void getHistos(TFile * ,bool );
-    //void getH1(TFile *, TH1F* );
-    void drawH2(TString , TH2F* , TString , TString ="", int = -99, 
+    void drawH2(TString , TH2F* , TString , TString ="", 
           TString ="", double= -99 , double= -99 , double = -99, double = -99,
 	  bool  = false, int = -99 , TString ="" , bool = false , bool = false );
     void drawH1(TString, std::vector<Jet4Plot> , TString , TString ="", int = -99, double = -99., 
@@ -70,7 +68,6 @@ class Plot_kinSel{
           TString ="", double =-99., double =-99., double =-99., double =-99., TString = "", bool = false,
 	  int = -99, TString = "", bool = false, bool = false);
     void saveHistos(std::string, bool );   
-//    string jet4SelectionMethod(int );   
 };
 
 
@@ -86,60 +83,94 @@ Plot_kinSel::Plot_kinSel(std::string datasample, std::string MCsample, TString d
   if(datasample == "" || MCsample == ""){
     sample = (datasample == "") ? MCsample : datasample;
     inputfilename = plotsFld+"Histograms_"+sample+"_"+opt+".root"; 
-    f=new TFile(inputfilename.c_str());
-    plotFld = sample+"_"+opt+"/";
+    f = TFile::Open(inputfilename.c_str());
+    if(!f) return; //debug (return..)
+    plotSubFld = sample+"_"+opt+"/";
   }
   else {
     inputfilename = plotsFld+"Histograms_"+datasample+"_"+opt+".root"; 
-    f1=new TFile(inputfilename.c_str());
+    f1 = TFile::Open(inputfilename.c_str());
+    if(!f1) return; //debug (return..)
     Legend[0]="data";
     inputfilename = plotsFld+"Histograms_"+MCsample+"_"+opt+".root"; 
-    f2=new TFile(inputfilename.c_str());
+    f2 = TFile::Open(inputfilename.c_str());
+    if(!f2) return; //debug (return..)
     Legend[1]="MC-res"+MCsample;
-    plotFld = "comp"+MCsample+"_"+opt+"/";
+    plotSubFld = "comp"+MCsample+"_"+opt+"/";
     twoSamples = true;
   }
 
   Jet4Plot jn;
-  if (!twoSamples && (1 == whatdisplay || whatdisplay == 0)){ //Jets variable plots
-
-    //4jets pt comparison
-//    h1=(TH1F*)f->Get("h_naJets");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-//    h1=(TH1F*)f->Get("h_nfJets");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-//    drawH1(dataset, h1v, "nJets_comp", "# jets", 1, 1000);      h1v.clear();
-
+  if (1 == whatdisplay || whatdisplay == 0){ //Jets variable plots
+   if(!twoSamples){
     h1=(TH1F*)f->Get("h_nJetsAll");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
     h1=(TH1F*)f->Get("h_nJetsAcc");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
     h1=(TH1F*)f->Get("h_nfJets");      jn.h=h1; jn.norm=0.; h1v.push_back(jn);
     h1=(TH1F*)f->Get("h_naJets");      jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-    drawH1(dataset, h1v, "nJets_comp", "# jets", 0, 10000);      h1v.clear();
+    drawH1(dataset, h1v, "nJets_comp", "# jets", 0, 1.);      h1v.clear();
 
     h1=(TH1F*)f->Get("h_JetsAll_mass");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
     h1=(TH1F*)f->Get("h_JetsAcc_mass");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
     h1=(TH1F*)f->Get("h_fJets_mass");      jn.h=h1; jn.norm=0.; h1v.push_back(jn);
     h1=(TH1F*)f->Get("h_aJets_mass");      jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-    drawH1(dataset, h1v, "Jets_mass_comp", "jet m (GeV/c^{2})", 2, 10000);      h1v.clear();
+    drawH1(dataset, h1v, "Jets_mass_comp", "jet m (GeV/c^{2})", 2, 1.);      h1v.clear();
 
     h1=(TH1F*)f->Get("h_JetsAll_pT");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
     h1=(TH1F*)f->Get("h_JetsAcc_pT");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
     h1=(TH1F*)f->Get("h_fJets_pT");      jn.h=h1; jn.norm=0.; h1v.push_back(jn);
     h1=(TH1F*)f->Get("h_aJets_pT");      jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-    drawH1(dataset, h1v, "Jets_pT_comp", "jet p_{T} (GeV/c)", 2, 10000);      h1v.clear();
+    drawH1(dataset, h1v, "Jets_pT_comp", "jet p_{T} (GeV/c)", 2, 1.);      h1v.clear();
 
     h1=(TH1F*)f->Get("h_JetsAll_eta");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
     h1=(TH1F*)f->Get("h_JetsAcc_eta");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
     h1=(TH1F*)f->Get("h_fJets_eta");      jn.h=h1; jn.norm=0.; h1v.push_back(jn);
     h1=(TH1F*)f->Get("h_aJets_eta");      jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-    drawH1(dataset, h1v, "Jets_eta_comp", "jet #eta", 2, 10000);      h1v.clear();
+    drawH1(dataset, h1v, "Jets_eta_comp", "jet #eta", 2, 1.);      h1v.clear();
 
     h1=(TH1F*)f->Get("h_JetsAll_CSV");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
     h1=(TH1F*)f->Get("h_JetsAcc_CSV");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
     h1=(TH1F*)f->Get("h_fJets_CSV");      jn.h=h1; jn.norm=0.; h1v.push_back(jn);
     h1=(TH1F*)f->Get("h_aJets_CSV");      jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-    drawH1(dataset, h1v, "Jets_CSV_comp", "jet CSV", 4, 10000, 0);      h1v.clear();
-  }
-  else if (!twoSamples && (2 == whatdisplay || whatdisplay == 0)){ //Jets comparison
+    drawH1(dataset, h1v, "Jets_CSV_comp", "jet CSV", 4, 1., 0);      h1v.clear();
 
+    //h1=(TH1F*)f->Get("h_fJets_Centr");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    //drawH1(dataset, h1v, "fJets_Centr", "jet C", 4, 0, 0);      h1v.clear();
+
+    //h1=(TH1F*)f->Get("h_MET");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    //drawH1(dataset, h1v, "met", "met (GeV)", 4, 0 );      h1v.clear();
+   }
+   else {
+    h1=(TH1F*)f1->Get("h_nfJets");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_nfJets");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "nfJets_comp", "# final jets", 0, 1.);      h1v.clear();
+
+    h1=(TH1F*)f1->Get("h_fJets_mass");      jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_fJets_mass");      jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "fJets_mass_comp", "final jets m (GeV/c^{2})", 2, 1.);      h1v.clear();
+
+    h1=(TH1F*)f1->Get("h_fJets_pT");      jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_fJets_pT");      jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "fJets_pT_comp", "final jets p_{T} (GeV/c)", 2, 1.);      h1v.clear();
+
+    h1=(TH1F*)f1->Get("h_fJets_eta");      jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_fJets_eta");      jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "fJets_eta_comp", "final jets #eta", 2, 1.);      h1v.clear();
+
+    h1=(TH1F*)f1->Get("h_fJets_CSV");      jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_fJets_CSV");      jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "fJets_CSV_comp", "final jets CSV", 4, 1., 0);      h1v.clear();
+
+    h1=(TH1F*)f1->Get("h_fJets_Centr");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_fJets_Centr");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "fJets_Centr", "final jets C", 4, 1., 0);      h1v.clear();
+
+    h1=(TH1F*)f1->Get("h_MET");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_MET");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "met", "met (GeV)", 4, 1.);      h1v.clear();
+   }
+  }
+  else if (2 == whatdisplay || whatdisplay == 0){ //Jets comparison
+   if(!twoSamples){
     //4 final jets
     h1=(TH1F*)f->Get("h_fJet1_mass");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
     h1=(TH1F*)f->Get("h_fJet2_mass");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
@@ -165,15 +196,80 @@ Plot_kinSel::Plot_kinSel(std::string datasample, std::string MCsample, TString d
     h1=(TH1F*)f->Get("h_fJet4_CSV");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
     drawH1(dataset, h1v, "fJets_CSV_comp", "jet CSV", 4, 0, 0);      h1v.clear();
 
-    h1=(TH1F*)f->Get("h_fJet3avg_CSV");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f->Get("h_fJets3avg_CSV");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
     drawH1(dataset, h1v, "fJets3avg_CSV", "avg 3jets CSV", 4, 0, 0);      h1v.clear();
 
-    h1=(TH1F*)f->Get("h_fJet3min_CSV");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f->Get("h_fJets3min_CSV");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
     drawH1(dataset, h1v, "fJets3min_CSV", "min 3jet CSV", 4, 0, 0);      h1v.clear();
 
-   // h1=(TH1F*)f->Get("h_fJets_Centr");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-//    drawH1(dataset, h1v, "fJets_Centr", "jet C", 4, 0, 0);      h1v.clear();
+    h1=(TH1F*)f->Get("h_fJets4avg_CSV");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "fJets4avg_CSV", "avg 4jets CSV", 4, 0, 0);      h1v.clear();
+   }
+   else{
+    h1=(TH1F*)f1->Get("h_fJet1_mass");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_fJet1_mass");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "fJet1_mass_comp", "final jet1 m (GeV/c^{2})", 2, 1.);      h1v.clear();  //re-scale..
+    h1=(TH1F*)f1->Get("h_fJet2_mass");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_fJet2_mass");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "fJet2_mass_comp", "final jet2 m (GeV/c^{2})", 2, 1.);      h1v.clear();
+    h1=(TH1F*)f1->Get("h_fJet3_mass");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_fJet3_mass");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "fJet3_mass_comp", "final jet3 m (GeV/c^{2})", 2, 1.);      h1v.clear();
+    h1=(TH1F*)f1->Get("h_fJet4_mass");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_fJet4_mass");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "fJet4_mass_comp", "final jet4 m (GeV/c^{2})", 2, 1.);      h1v.clear();
 
+    h1=(TH1F*)f1->Get("h_fJet1_pT");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_fJet1_pT");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "fJet1_pT_comp", "final jet1 p_{T} (GeV/c)", 2, 1.);      h1v.clear();
+    h1=(TH1F*)f1->Get("h_fJet2_pT");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_fJet2_pT");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "fJet2_pT_comp", "final jet2 p_{T} (GeV/c)", 2, 1.);      h1v.clear();
+    h1=(TH1F*)f1->Get("h_fJet3_pT");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_fJet3_pT");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "fJet3_pT_comp", "final jet3 p_{T} (GeV/c)", 2, 1.);      h1v.clear();
+    h1=(TH1F*)f1->Get("h_fJet4_pT");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_fJet4_pT");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "fJet4_pT_comp", "final jet4 p_{T} (GeV/c)", 2, 1.);      h1v.clear();
+
+    h1=(TH1F*)f1->Get("h_fJet1_Eta");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_fJet1_Eta");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "fJet1_Eta_comp", "final jet1 #eta", 2, 1.);      h1v.clear();
+    h1=(TH1F*)f1->Get("h_fJet2_Eta");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_fJet2_Eta");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "fJet2_Eta_comp", "final jet2 #eta", 2, 1.);      h1v.clear();
+    h1=(TH1F*)f1->Get("h_fJet3_Eta");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_fJet3_Eta");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "fJet3_Eta_comp", "final jet3 #eta", 2, 1.);      h1v.clear();
+    h1=(TH1F*)f1->Get("h_fJet4_Eta");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_fJet4_Eta");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "fJet4_Eta_comp", "final jet4 #eta", 2, 1.);      h1v.clear();
+
+    h1=(TH1F*)f1->Get("h_fJet1_CSV");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_fJet1_CSV");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "fJet1_CSV_comp", "final jet1 CSV", 4, 1., 0, 1, "", 0.5, 1.0);      h1v.clear();
+    h1=(TH1F*)f1->Get("h_fJet2_CSV");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_fJet2_CSV");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "fJet2_CSV_comp", "final jet2 CSV", 4, 1., 0, 1, "", 0.5, 1.0);      h1v.clear();
+    h1=(TH1F*)f1->Get("h_fJet3_CSV");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_fJet3_CSV");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "fJet3_CSV_comp", "final jet3 CSV", 4, 1., 0, 1, "", 0.5, 1.0);      h1v.clear();
+    h1=(TH1F*)f1->Get("h_fJet4_CSV");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_fJet4_CSV");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "fJet4_CSV_comp", "final jet4 CSV", 4, 1., 0);      h1v.clear();
+
+    h1=(TH1F*)f1->Get("h_fJets3avg_CSV");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_fJets3avg_CSV");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "fJets3avg_CSV", "final avg 3jets CSV", 4, 1., 0);      h1v.clear();
+
+    h1=(TH1F*)f1->Get("h_fJets3min_CSV");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_fJets3min_CSV");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "fJets3min_CSV", "final min 3jet CSV", 4, 1., 0);      h1v.clear();
+
+    h1=(TH1F*)f1->Get("h_fJets4avg_CSV");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    h1=(TH1F*)f2->Get("h_fJets4avg_CSV");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
+    drawH1(dataset, h1v, "fJets4avg_CSV", "avg 4jets CSV", 4, 1., 0);      h1v.clear();
+   }
   }
   else if (3 == whatdisplay || whatdisplay == 0){  //diJets comparison
 
@@ -182,27 +278,27 @@ Plot_kinSel::Plot_kinSel(std::string datasample, std::string MCsample, TString d
       h1=(TH1F*)f->Get("h_H1_mass");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f->Get("h_H2_mass");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f->Get("h_H_mass");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-      drawH1(dataset, h1v, "diJets_mass_comp", "di-jet 1 m (GeV/c^{2})", 4 ,10000);      h1v.clear();
+      drawH1(dataset, h1v, "diJets_mass_comp", "di-jet 1 m (GeV/c^{2})", 4 ,1.);      h1v.clear();
 
       h1=(TH1F*)f->Get("h_H1_pT");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f->Get("h_H2_pT");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f->Get("h_H_pT");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-      drawH1(dataset, h1v, "diJets_pT_comp", "di-jet p_{T} (GeV/c)", 2, 10000);      h1v.clear();
+      drawH1(dataset, h1v, "diJets_pT_comp", "di-jet p_{T} (GeV/c)", 2, 1.);      h1v.clear();
 
       h1=(TH1F*)f->Get("h_H1_Eta");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f->Get("h_H2_Eta");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f->Get("h_H_Eta");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-      drawH1(dataset, h1v, "diJets_eta_comp", "di-jet #eta", 2, 10000);      h1v.clear();
+      drawH1(dataset, h1v, "diJets_eta_comp", "di-jet #eta", 2, 1.);      h1v.clear();
 
       h1=(TH1F*)f->Get("h_H1_Phi");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f->Get("h_H2_Phi");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f->Get("h_H_Phi");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-      drawH1(dataset, h1v, "diJets_phi_comp", "di-jet #phi", 2, 10000, 1, 0);      h1v.clear();
+      drawH1(dataset, h1v, "diJets_phi_comp", "di-jet #phi", 2, 1., 1, 0);      h1v.clear();
 
       h1=(TH1F*)f->Get("h_H1_CosTheta*");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f->Get("h_H2_CosTheta*");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f->Get("h_H_CosTheta*");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-      drawH1(dataset, h1v, "diJets_CosThSt_comp", "di-jet |cos#theta*|", 2, 10000);      h1v.clear();
+      drawH1(dataset, h1v, "diJets_CosThSt_comp", "di-jet |cos#theta*|", 2, 1.);      h1v.clear();
 
       h1=(TH1F*)f->Get("h_H1_DR");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f->Get("h_H2_DR");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
@@ -219,35 +315,35 @@ Plot_kinSel::Plot_kinSel(std::string datasample, std::string MCsample, TString d
     else {
       h1=(TH1F*)f1->Get("h_H1_mass");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f2->Get("h_H1_mass");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-      drawH1(dataset, h1v, "H1_mass_comp", "H1 m (GeV/c^{2})", 4 ,10000);      h1v.clear();
+      drawH1(dataset, h1v, "H1_mass_comp", "H1 m (GeV/c^{2})", 4 ,1.);      h1v.clear();
 
       h1=(TH1F*)f1->Get("h_H1_pT");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f2->Get("h_H1_pT");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-      drawH1(dataset, h1v, "diJets_pT_comp", "H1 p_{T} (GeV/c)", 2, 10000);      h1v.clear();
+      drawH1(dataset, h1v, "diJets_pT_comp", "H1 p_{T} (GeV/c)", 2, 1.);      h1v.clear();
 
       h1=(TH1F*)f1->Get("h_H1_Eta");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f2->Get("h_H1_Eta");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-      drawH1(dataset, h1v, "diJets_eta_comp", "H1 #eta", 2, 10000);      h1v.clear();
+      drawH1(dataset, h1v, "diJets_eta_comp", "H1 #eta", 2, 1.);      h1v.clear();
 
       h1=(TH1F*)f1->Get("h_H1_Phi");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f2->Get("h_H1_Phi");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-      drawH1(dataset, h1v, "diJets_phi_comp", "H1 #phi", 2, 10000, 1, 0);      h1v.clear();
+      drawH1(dataset, h1v, "diJets_phi_comp", "H1 #phi", 2, 1., 1, 0);      h1v.clear();
 
       h1=(TH1F*)f1->Get("h_H1_CosTheta*");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f2->Get("h_H1_CosTheta*");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-      drawH1(dataset, h1v, "diJets_CosThSt_comp", "H1 |cos#theta*|", 2, 10000);      h1v.clear();
+      drawH1(dataset, h1v, "diJets_CosThSt_comp", "H1 |cos#theta*|", 2, 1.);      h1v.clear();
 
       h1=(TH1F*)f1->Get("h_H1_DR");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f2->Get("h_H1_DR");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-      drawH1(dataset, h1v, "diJets_DR_comp", "H1 #Delta R", 2, 10000);      h1v.clear();
+      drawH1(dataset, h1v, "diJets_DR_comp", "H1 #Delta R", 2, 1.);      h1v.clear();
 
       h1=(TH1F*)f1->Get("h_H1_DPhi");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f2->Get("h_H1_DPhi");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-      drawH1(dataset, h1v, "diJets_DPhi_comp", "H1 #Delta #phi", 2, 10000);      h1v.clear();
+      drawH1(dataset, h1v, "diJets_DPhi_comp", "H1 #Delta #phi", 2, 1.);      h1v.clear();
 
       h1=(TH1F*)f1->Get("h_H1_DEta");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f2->Get("h_H1_DEta");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-      drawH1(dataset, h1v, "diJets_DEta_comp", "H1 #Delta #eta", 2, 10000);      h1v.clear();
+      drawH1(dataset, h1v, "diJets_DEta_comp", "H1 #Delta #eta", 2, 1.);      h1v.clear();
     }
   }
   else if (4 == whatdisplay || whatdisplay == 0 ){ //diHiggs system
@@ -263,7 +359,7 @@ Plot_kinSel::Plot_kinSel(std::string datasample, std::string MCsample, TString d
       drawH1(dataset, h1v, "diHiggs_Eta", "", 2, 0);      h1v.clear();
 
       h1=(TH1F*)f->Get("h_HH_Phi");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-      drawH1(dataset, h1v, "diHiggs_Phi", "", 2, 0);      h1v.clear();
+      drawH1(dataset, h1v, "diHiggs_Phi", "", 2, 0, 1, 0);      h1v.clear();
 
       h1=(TH1F*)f->Get("h_HH_DR");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       drawH1(dataset, h1v, "diHiggs_DR", "", 2, 0);      h1v.clear();
@@ -275,49 +371,53 @@ Plot_kinSel::Plot_kinSel(std::string datasample, std::string MCsample, TString d
       drawH1(dataset, h1v, "diHiggs_DEta", "", 2, 0);      h1v.clear();
 
       h2=(TH2F*)f->Get("h_H1_H2_mass");
-      drawH2(dataset, h2, "diHiggs_H1H2_mass", "", 2);
+      drawH2(dataset, h2, "diHiggs_H1H2_mass", "");
     }
     else {
       h1=(TH1F*)f1->Get("h_HH_mass");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f2->Get("h_HH_mass");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-      drawH1(dataset, h1v, "HH_mass", "", 2, 10000);      h1v.clear();
+      drawH1(dataset, h1v, "HH_mass", "", 2, 1.);      h1v.clear();
 
       h1=(TH1F*)f1->Get("h_HH_pT");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f2->Get("h_HH_pT");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-      drawH1(dataset, h1v, "HH_pT", "", 2, 10000);      h1v.clear();
+      drawH1(dataset, h1v, "HH_pT", "", 2, 1.);      h1v.clear();
 
       h1=(TH1F*)f1->Get("h_HH_Eta");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f2->Get("h_HH_Eta");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-      drawH1(dataset, h1v, "HH_Eta", "", 2, 10000);      h1v.clear();
+      drawH1(dataset, h1v, "HH_Eta", "", 2, 1.);      h1v.clear();
 
       h1=(TH1F*)f1->Get("h_HH_Phi");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f2->Get("h_HH_Phi");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-      drawH1(dataset, h1v, "HH_Phi", "", 2, 10000);      h1v.clear();
+      drawH1(dataset, h1v, "HH_Phi", "", 2, 1., 1, 0);      h1v.clear();
 
       h1=(TH1F*)f1->Get("h_HH_DR");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f2->Get("h_HH_DR");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-      drawH1(dataset, h1v, "HH_DR", "", 2, 10000);      h1v.clear();
+      drawH1(dataset, h1v, "HH_DR", "", 2, 1.);      h1v.clear();
 
       h1=(TH1F*)f1->Get("h_HH_DPhi");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f2->Get("h_HH_DPhi");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-      drawH1(dataset, h1v, "HH_DPhi", "", 2, 10000);      h1v.clear();
+      drawH1(dataset, h1v, "HH_DPhi", "", 2, 1.);      h1v.clear();
 
       h1=(TH1F*)f1->Get("h_HH_DEta");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
       h1=(TH1F*)f2->Get("h_HH_DEta");    jn.h=h1; jn.norm=0.; h1v.push_back(jn);
-      drawH1(dataset, h1v, "HH_DEta", "", 2, 10000);      h1v.clear();
+      drawH1(dataset, h1v, "HH_DEta", "", 2, 1.);      h1v.clear();
 
       h2=(TH2F*)f1->Get("h_H1_H2_mass");
-      drawH2(dataset, h2, "diHiggs_H1H2_mass_Data", "", 2);
+      drawH2(dataset, h2, "diHiggs_H1H2_mass_Data", "");
 
       h2=(TH2F*)f2->Get("h_H1_H2_mass");
-      drawH2(dataset, h2, "diHiggs_H1H2_mass_MC", "", 2);
+      drawH2(dataset, h2, "diHiggs_H1H2_mass_MC", "");
     }
   }
-  else if (MCsample != "" && !twoSamples && (whatdisplay == 0 || whatdisplay == 5)){ 
-
-
-
+  else if (5 == whatdisplay || whatdisplay == 0 ){ //efficiencies
+    if(twoSamples){
+      h1=(TH1F*)f1->Get("h_Cuts");
+      //h1=(TH1F*)f2->Get("h_Cuts");
+      //drawEff(dataset, h2, "diHiggs_H1H2_mass_MC", "");
+    }
   }
+  //else if (MCsample != "" && !twoSamples && (whatdisplay == 0 || whatdisplay == 5)){ 
+  //}
 }
 
 Plot_kinSel::~Plot_kinSel(){
@@ -325,7 +425,7 @@ Plot_kinSel::~Plot_kinSel(){
 //---------------
 
 void Plot_kinSel::drawCMSprel(TString dataset) {
-  TLatex* text=new TLatex(0.18, 0.95, "CMS preliminary 2015, #sqrt{s}=13 TeV, "+dataset+", non-res hh->4b");
+  TLatex* text=new TLatex(0.18, 0.93, "CMS preliminary 2015, #sqrt{s}=13 TeV, "+dataset+", non-res hh->4b");
   text->SetNDC();
   text->SetTextSize(0.02);
   text->Draw();
@@ -397,14 +497,16 @@ void Plot_kinSel::drawH1(TString dataset, std::vector<Jet4Plot> hn, TString name
   leg->Draw("same");
   drawCMSprel(dataset);
   c->Update();
-  c->SaveAs(OutFld+plotFld+name+".png");
-  c->SaveAs(OutFld+plotFld+name+".pdf");
+  c->SaveAs(OutFld+plotSubFld+name+".png");
+  c->SaveAs(OutFld+plotSubFld+name+".pdf");
 }
 //---------------
 
-void Plot_kinSel::drawH2(TString dataset, TH2F* h2, TString name, TString xTitle, int rebin, 
+void Plot_kinSel::drawH2(TString dataset, TH2F* h2, TString name, TString xTitle, 
           TString yTitle, double xmin, double xmax, double ymin, double ymax,
-	  bool stat , int orbin , TString option , bool logX , bool logY ) {
+           bool stat , int orbin , TString option , bool logX , bool logY ) {
+
+  gStyle->SetPadRightMargin(0.09);
 
   TCanvas* c = new TCanvas(name,name,600,600);
   c->cd();
@@ -412,11 +514,10 @@ void Plot_kinSel::drawH2(TString dataset, TH2F* h2, TString name, TString xTitle
   if (logY) gPad->SetLogy();
 
   TString options = (option=="" ? "COLZ" : option);
-  
+    
   //normalize and set y range
   h2->Sumw2();  
   //if(h[i]->GetNbinsX() != orbin) cout << "WARNING: orbin for " << h[i]->GetName() << " are " << h[i]->GetNbinsX() << endl; //debug - shift of h[][] wrt clu[][]
-  if(rebin >0) h2->Rebin(rebin);
 
   if(xmin>0 && xmax>0)h2->GetXaxis()->SetRangeUser(xmin,xmax);
   if(xTitle!="")h2->GetXaxis()->SetTitle(xTitle);
@@ -431,11 +532,15 @@ void Plot_kinSel::drawH2(TString dataset, TH2F* h2, TString name, TString xTitle
   h2->GetYaxis()->SetTitleSize(0.04);    
   string nam = "";
   h2->Draw(options);
+  c->Update(); 
+  TPaletteAxis *palette = (TPaletteAxis*)h2->GetListOfFunctions()->FindObject("palette");
+  palette->GetAxis()->SetLabelSize(0.005);
+  palette->GetAxis()->SetTitleSize(0.005);
 
   drawCMSprel(dataset);
   c->Update();
-  c->SaveAs(OutFld+plotFld+name+".png");
-  c->SaveAs(OutFld+plotFld+name+".pdf");
+  c->SaveAs(OutFld+plotSubFld+name+".png");
+  c->SaveAs(OutFld+plotSubFld+name+".pdf");
 }
 //---------------
 
