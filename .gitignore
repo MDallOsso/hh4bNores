@@ -19,3 +19,4 @@ merge.sh
 /V*/
 *datacards/
 *.exe
+*roostats*
