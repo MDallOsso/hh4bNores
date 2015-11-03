@@ -16,7 +16,7 @@ merge.sh
 *mmva
 *.tgz
 *weights/
-/V*/
+*/V*/
 *datacards/
 *.exe
 *roostats*
