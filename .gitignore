@@ -17,3 +17,5 @@ merge.sh
 *.tgz
 *weights/
 /V*/
+*datacards/
+*.exe
