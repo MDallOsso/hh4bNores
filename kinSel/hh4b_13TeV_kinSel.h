@@ -61,13 +61,13 @@ class hh4b_kinSel{
 // void    doKinSel(std::string , bool , std::string , int =2, int =0, std::string ="");
     ~hh4b_kinSel();
 
-    double fJets3avgCSV, fJets3minCSV, fJets4avgCSV;
-    double Centr;
+    float fJets3avgCSV, fJets3minCSV, fJets4avgCSV;
+    float Centr;
 
     void anglesComputation();
     void setBranches(bool, TTree*);   
     bool readMatrix( std::string, std::string );
-    double selectBestDiJets (int );
+    float selectBestDiJets (int );
     void fillHistos(bool );   
     void writeHistos(std::string, bool );   
     string jet4SelectionMethod(int );  

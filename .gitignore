@@ -15,3 +15,5 @@ merge.sh
 *TMVA-v4.2.0/
 *mmva
 *.tgz
+*weights/
+/V*/

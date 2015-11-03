@@ -30,11 +30,11 @@ bool yesTrg_hh4bQuadDouble = false; //for trg efficiency
 bool yesTrg_hh4bDoubleDouble = false; //for trg efficiency
 bool yesTrg_hh4bAll = false; //include all the 4th paths
 
-double Jet_pt_cut_low = 20.;
-double deltaRCut = 0.5; //0.5 - for matching
+float Jet_pt_cut_low = 20.;
+float deltaRCut = 0.5; //0.5 - for matching
 int nJets_cut = 4;
-double Jet_eta_cut = 10.;
-double CSV_cut = 0.605;  //Run2: low 0.605; medium 0.890; high 0.970. Run1: low 0.679 (used in the first presentation).
+float Jet_eta_cut = 10.;
+float CSV_cut = 0.605;  //Run2: low 0.605; medium 0.890; high 0.970. Run1: low 0.679 (used in the first presentation).
 
 // matrix parameters  --> needed?...
 static const int binPt = 10;
@@ -212,7 +212,7 @@ hh4b_kinSel::hh4b_kinSel(std::string sample, bool isData, std::string opt, int f
           //.............
 
 //debug--- move....
-          double dR=0;
+          float dR=0;
           //check matching if MC --- DEBUG!!!!!!!!!!
           //-------------------------
           if(!isData){ 
@@ -222,7 +222,7 @@ hh4b_kinSel::hh4b_kinSel(std::string sample, bool isData, std::string opt, int f
             bool noJetMatch = false;
             std::vector<TLorentzVector>::iterator index;
             for(int l=0; l<3;l++){
-              double dRFin = deltaRCut;
+              float dRFin = deltaRCut;
               for(std::vector<TLorentzVector>::iterator it = genB_P.begin() ; it != genB_P.end(); ++it){
                 dR = jets_inAcc_P[l].DeltaR(*it);
                 if(dR<dRFin) {
@@ -243,7 +243,7 @@ hh4b_kinSel::hh4b_kinSel(std::string sample, bool isData, std::string opt, int f
 
             // Fill deltaR for all the fourth jet and find the 'MC Truth' (jet closest to remaining genB)
             //------------
-            double dRFinal = deltaRCut;
+            float dRFinal = deltaRCut;
             for(int j=3; j<NJetInAcc; ++j){
               dR = jets_inAcc_P[j].DeltaR(genB_P[0]);
               h_jet4b_drAll->Fill(dR,1./(NJetInAcc-3));
@@ -266,9 +266,9 @@ hh4b_kinSel::hh4b_kinSel(std::string sample, bool isData, std::string opt, int f
             // fill discriminating variables
             //------------
             for(int j=3; j<NJetInAcc; ++j){
-              double DpT = jets_inAcc[2].pT - jets_inAcc[j].pT;  //debug --- jet has same ordering of jets_P ?..
-              double DCSV = jets_inAcc[2].CSV - jets_inAcc[j].CSV;
-              double Deta = fabs(jets_inAcc[2].eta) - fabs(jets_inAcc[j].eta);
+              float DpT = jets_inAcc[2].pT - jets_inAcc[j].pT;  //debug --- jet has same ordering of jets_P ?..
+              float DCSV = jets_inAcc[2].CSV - jets_inAcc[j].CSV;
+              float Deta = fabs(jets_inAcc[2].eta) - fabs(jets_inAcc[j].eta);
               if(j==InTrue){
                 h_Jet4match_pT->Fill(jets_inAcc[j].pT);
                 h_Jet4match_eta->Fill(jets_inAcc[j].eta);
@@ -291,12 +291,12 @@ hh4b_kinSel::hh4b_kinSel(std::string sample, bool isData, std::string opt, int f
 
           //select 4th jet and match di-jets
           //-----------------------------------------
-          double mAve;
+          float mAve;
           // with RL method
           //----------------
           if(finalIndex == 1){
             //read matrix and assign max R
-            double Rmax = 0; 
+            float Rmax = 0; 
             for(int j=3; j<NJetInAcc; ++j){
               int ipT = jets_inAcc[j].pT*(binPt-1)/300;
               if(ipT>binPt-1) ipT = binPt-1;
@@ -310,7 +310,7 @@ hh4b_kinSel::hh4b_kinSel(std::string sample, bool isData, std::string opt, int f
               else if(ieta<3) ieta = 1;
               else if(ieta<4) ieta = 2;
               else ieta = 3;
-              double thisR = R[ipT][iCSV][ieta];
+              float thisR = R[ipT][iCSV][ieta];
               //if(i<0.5*nEvents+20){ 
                // cout << j << "  " << thisR << "  " << jets_P[j].DeltaR(genB_P[0]) << endl;
                // cout << j << "  " << jet[j].pT << "  " << ipT << "  " << iCSV << "  " << ieta << endl; 
@@ -383,6 +383,12 @@ hh4b_kinSel::hh4b_kinSel(std::string sample, bool isData, std::string opt, int f
           fJets3minCSV = std::min({fJets_CSV[0].CSV,fJets_CSV[1].CSV,fJets_CSV[2].CSV});
           fJets4avgCSV = (fJets_CSV[0].CSV+fJets_CSV[1].CSV+fJets_CSV[2].CSV+fJets_CSV[3].CSV)/4;
           Centr = ((fJets_P[0].Pt()/fJets_P[0].E())+(fJets_P[1].Pt()/fJets_P[1].E())+(fJets_P[2].Pt()/fJets_P[2].E())+(fJets_P[3].Pt()/fJets_P[3].E()))/4; //Centrality
+          if(checkIfNan(Centr)) cout << "NaN Centr" <<endl;
+          if(checkIfNan(H1.pT)) cout << "NaN H1.pT" <<endl;
+          if(checkIfNan(H2.pT)) cout << "NaN H2.pT" <<endl;
+          if(checkIfNan(fJet3_CSV.pT)) cout << "NaN fJet3_CSV.pT" <<endl;
+          if(checkIfNan(HH.mass)) cout << "NaN HH.mass" <<endl;
+          if(checkIfNan(H1.CosThSt)) cout << "NaN H1.CosThSt" <<endl;
 
           //angles computation:     
           anglesComputation();
@@ -475,7 +481,7 @@ hh4b_kinSel::hh4b_kinSel(std::string sample, bool isData, std::string opt, int f
   std::cout<<"# event with 'mixed' jets = " << nMixJets << std::endl;
   cout << "# error fJets: " << errfJets << endl << endl;
   if(!isData){
-    cout << "'ACCEPTANCE' (Ntrue/Nevents): " << (double)nMCTruth/nEvents*100 << endl;
+    cout << "'ACCEPTANCE' (Ntrue/Nevents): " << (float)nMCTruth/nEvents*100 << endl;
     cout << "N true jets " << Ntr[0] << endl;
     cout << "nMCTruth " << nMCTruth << endl;
     cout << endl;
@@ -501,7 +507,7 @@ hh4b_kinSel::hh4b_kinSel(std::string sample, bool isData, std::string opt, int f
   ofs<<endl;
 
   if(!isData){
-    ofs << "'ACCEPTANCE' (Ntrue/Nevents): " << (double)nMCTruth/nEvents*100 << endl;
+    ofs << "'ACCEPTANCE' (Ntrue/Nevents): " << (float)nMCTruth/nEvents*100 << endl;
     ofs << "N true jets " << Ntr[0] << endl;
     ofs << "nMCTruth " << nMCTruth << endl;
     ofs << endl;
@@ -530,20 +536,20 @@ hh4b_kinSel::~hh4b_kinSel(){
 }
 //---------------
 
-double hh4b_kinSel::selectBestDiJets(int k = 0){ //choose best di-jets combination, compute avg Higgs mass and initialize Higgs vector
+float hh4b_kinSel::selectBestDiJets(int k = 0){ //choose best di-jets combination, compute avg Higgs mass and initialize Higgs vector
 
   if(jets_inAcc[k].CSV<=0.)  return -1.; //check to avoid underflow in 4th jet.
 
   fJetsIndex.clear(); //new at every call...
-  double M12=0,M13=0,M14=0, M23=0, M24=0, M34=0;
+  float M12=0,M13=0,M14=0, M23=0, M24=0, M34=0;
   M12 = (jets_inAcc_P[0] + jets_inAcc_P[1]).M();
   M13 = (jets_inAcc_P[0] + jets_inAcc_P[2]).M();
   M14 = (jets_inAcc_P[0] + jets_inAcc_P[k]).M();
   M23 = (jets_inAcc_P[1] + jets_inAcc_P[2]).M();
   M24 = (jets_inAcc_P[1] + jets_inAcc_P[k]).M();
   M34 = (jets_inAcc_P[2] + jets_inAcc_P[k]).M();
-  double DM1, DM2, DM3;
-  double Higgs_mAve = 9999;
+  float DM1, DM2, DM3;
+  float Higgs_mAve = 9999;
   DM1= fabs(M12 - M34);
   DM2= fabs(M13 - M24);
   DM3= fabs(M14 - M23);
@@ -600,7 +606,7 @@ bool hh4b_kinSel::readMatrix( std::string MCsample_RL, std::string opt){
   inmatrix.open(fn);
   if (inmatrix) {
       int i1, i2, i3;
-      double sumnA=0, sumnM=0; 
+      float sumnA=0, sumnM=0; 
       for(int ipT=0; ipT<binPt; ipT++){
         for(int iCSV=0; iCSV<binCSV; iCSV++){
           for(int ieta=0; ieta<binEta; ieta++){
@@ -656,7 +662,9 @@ void hh4b_kinSel::anglesComputation(){
   H1.CosThSt = computeCosThetaStar(H1_P,HH_P);
   H2.CosThSt = computeCosThetaStar(H2_P,HH_P);
   H1.dR = fJets_P[0].DeltaR(fJets_P[1]);
+  if(checkIfNan(H1.dR)) cout << "NaN H1.dR" <<endl;
   H2.dR = fJets_P[2].DeltaR(fJets_P[3]);
+  if(checkIfNan(H2.dR)) cout << "NaN H2.dR" <<endl;
   H1.dPhi = fJets_P[0].DeltaPhi(fJets_P[1]);
   H2.dPhi = fJets_P[2].DeltaPhi(fJets_P[3]);
   H1.dEta = fJets_P[0].Eta() - fJets_P[1].Eta();
@@ -666,6 +674,7 @@ void hh4b_kinSel::anglesComputation(){
   H1.dEta_abs = abs(H1.dEta);
   H2.dEta_abs = abs(H2.dEta);
   HH.dR = H1_P.DeltaR(H2_P);  
+  if(checkIfNan(HH.dR)) cout << "NaN HH.dR" <<endl;
   HH.dPhi = H1_P.DeltaPhi(H2_P);  
   HH.dEta = H1_P.Eta() - H2_P.Eta();
   HH.dPhi_abs = abs(HH.dPhi);
@@ -756,6 +765,19 @@ void hh4b_kinSel::createTree(TTree* outtree){
   outtree->Branch("H2","diJet",&H2);
   outtree->Branch("HH","diJet",&HH);  //debug
   outtree->Branch("met","TLorentzVector",&met);
+
+  outtree->Branch("fJet3_pT",&fJet3_CSV.pT); //debug
+  outtree->Branch("fJet4_CSV",&fJet4_CSV.CSV); //debug
+  outtree->Branch("HH_mass",&HH.mass);  //debug
+  outtree->Branch("HH_dR",&HH.dR);  //debug
+  outtree->Branch("H1_cos",&H1.CosThSt);
+  outtree->Branch("H1_pT",&H1.pT);
+  outtree->Branch("H1_dR",&H1.dR);
+  outtree->Branch("H2_pT",&H2.pT);
+  outtree->Branch("H2_dR",&H2.dR);
+  outtree->Branch("H1_mass",&H1.mass);
+  outtree->Branch("H2_mass",&H2.mass);
+
   //no Higgs variables (both Higgs together..)
 }
 //---------------
@@ -764,8 +786,8 @@ void hh4b_kinSel::fillHistos(bool isData){
 
    for(std::vector<Jet>::iterator it = jets_all.begin() ; it != jets_all.end(); ++it){ //additional jets
      h_JetsAll_pT->Fill((*it).pT);
-     h_JetsAll_eta->Fill((*it).eta);
      h_JetsAll_mass->Fill((*it).mass);
+     h_JetsAll_eta->Fill((*it).eta);
      h_JetsAll_CSV->Fill((*it).CSV);
    }
    h_nJetsAll->Fill(jets_all.size());
@@ -814,7 +836,7 @@ void hh4b_kinSel::fillHistos(bool isData){
     h_fJets3avg_CSV->Fill(fJets3avgCSV);
     h_fJets3min_CSV->Fill(fJets3minCSV);
     h_fJets4avg_CSV->Fill(fJets4avgCSV);
-    h_H1_mass->Fill(H1.mass);
+   h_H1_mass->Fill(H1.mass);
     h_H1_pT->Fill(H1.pT);
     h_H1_Eta->Fill(H1.eta);
     h_H1_Phi->Fill(H1.phi);
