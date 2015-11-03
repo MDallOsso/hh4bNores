@@ -1,0 +1,34 @@
+
+1. MAKE2D:
+--------
+g++ `root-config --libs  --cflags` hh4b_13TeV_make2D.cpp -o make2D
+
+
+2. 2Dto1D:
+--------
+g++ `root-config --libs  --cflags` hh4b_13TeV_2Dto1D.cpp -o toCombine
+
+
+
+3. COMBINE (from combine folder):
+--------
+--ABCD 
+combine -M Asymptotic ABCDdatacard.txt -m 125 --rMax=200
+
+-Best fit
+combine -M MaxLikelihoodFit --robustFit=1 -m 125 --plots --saveShapes hh4bM260_datacard.txt
+
+-Limit 
+combine -M Asymptotic hh4bM260_datacard.txt -m 125 --rMax=200
+
+
+DATACARDS LIST:
+----------------
+- hh4bM260_datacard.txt -->
+
+
+
+4. DO FINAL PLOT:
+------------------
+.L hh4b_doFinalPlot.C
+hh4b_doFinalPlot()
