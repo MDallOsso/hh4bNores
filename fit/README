@@ -10,22 +10,27 @@ g++ `root-config --libs  --cflags` hh4b_13TeV_2Dto1D.cpp -o toCombine
 
 
 
-3. COMBINE (from combine folder):
+3. COMBINE (from combine folder!!):
 --------
 --ABCD 
 combine -M Asymptotic ABCDdatacard.txt -m 125 --rMax=200
 
 -Best fit
-combine -M MaxLikelihoodFit --robustFit=1 -m 125 --plots --saveShapes hh4bM260_datacard.txt
+combine -M MaxLikelihoodFit --robustFit=1 -m 125 --plots --saveShapes --saveNormalizations datacards/hh4bM260_datacard.txt
 
 -Limit 
-combine -M Asymptotic hh4bM260_datacard.txt -m 125 --rMax=200
+combine -M Asymptotic datacards/hh4bM260_datacard.txt -m 125 --rMax=2 -n HH4B
 
 
 DATACARDS LIST:
 ----------------
-- hh4bM260_datacard.txt -->
+- hh4bM260_datacard.txt --> for HH->4b resonant narrow M-260
 
+OTHER COMMANDS:
+----------------
+- python diffNuisances.py  mlfit.root  --> to get nuisances changes
+- python mlfitNormsToText.py mlfit.root  --> to get best fit yields
+- 
 
 
 4. DO FINAL PLOT:

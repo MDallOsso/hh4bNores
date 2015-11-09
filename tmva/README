@@ -8,5 +8,30 @@ Oct 19th 2015
 - make
 - cd test
 - source setup.sh
-## root 5 needed because it is still not compatible with ROOT6 --> CMSSW_7_2_2_patch2 used.
+## root 5 needed because it is still not compatible with ROOT6 --> CMSSW_7_2_2_patch2 used.   NO! 7_2_2 is already a ROOT 6
 (src/KDEKernel.cxx:94:30: error: 'Erf' is not a member of 'TMath' if (xs2>0 ) return 0.5*TMath::Erf(xs2);)
+
+!! USED CMSSW_7_0_2 -> for make (altrimenti errore)
+
+download TMVA "tar-ball" from https://sourceforge.net/projects/tmva/files/
+~> tar -zxvf TMVA-v4.2.0.tgz
+~> cd TMVA-v4.2.0
+~/TMVA-v4.2.0> make
+~/TMVA-v4.2.0> cd test
+~/TMVA-v4.2.0/test> source setup.sh
+
+After compilation, the library ∼/TMVA-v4.2.0/lib/libTMVA.1.so should be present
+
+~> cd MyWorkDir
+~/MyWorkDir> cp ~/TMVA-v4.2.0/test/setup.[c]sh .
+~/MyWorkDir> source setup.[c]sh <TMVA installatiols li	n path, e.g. ~/TMVA-v4.2.0 >
+
+RUN macro on ROOT 6 --> no issues.
+
+USED CMSSW_7_1_5 for code --> OK
+
+in ROOT
+.L TMVAGui.C 
+TMVAGui("results/V15/TMVATrain_BTagCSVRun2015C-D_pT20CSVL_def.root")
+
+

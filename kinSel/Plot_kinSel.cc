@@ -34,7 +34,7 @@ static const int colors[] = {kBlack, kOrange+2, kBlue, kCyan+2, kGreen-1, kRed, 
                 kViolet-4, kAzure-4, kSpring-4, kYellow-4, kGreen-4};
 const int maxCol = 36;
 
-static const std::string frameworkVersionFld="V14/";  //WARNING: CHANGE ME!!
+static const std::string frameworkVersionFld="V15/";  //WARNING: CHANGE ME!!
 
 static const std::string plotsFld="plots/"+frameworkVersionFld;
 static const TString OutFld="plots/"+frameworkVersionFld; //debug!!

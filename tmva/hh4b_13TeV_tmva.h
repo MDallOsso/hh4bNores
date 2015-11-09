@@ -1,6 +1,10 @@
 
+#define hh4b_tmva_H
 
 class hh4b_tmva {
+
+  std::string datasample, MCsample, opt;
+  int appOn, whatToDo;
 
   private:
     TH1F *bdt_out = new TH1F("bdt_application","bdt_application",100,0,1);
@@ -10,14 +14,15 @@ class hh4b_tmva {
     std::string outNtuples;
 
   public:
-    hh4b_tmva(std::string , std::string , std::string, bool,  int );
+    hh4b_tmva(std::string , std::string , std::string, int ,  int );
     ~hh4b_tmva();
 
-    void training(string , string , string , string );
-    bool BDTapplication(string , string );
-    bool Lapplication(string , string );
-    bool CutScanL(string );
-    bool CutScanBDT(string );
+    void doTmva();
+    void training(std::string , std::string , std::string , std::string );
+    bool BDTapplication(std::string , std::string );
+    bool Lapplication(std::string , std::string );
+    bool CutScanL(std::string );
+    bool CutScanBDT(std::string );
     std::string setTitle(int );
 
 };

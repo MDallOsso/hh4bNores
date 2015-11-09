@@ -15,7 +15,7 @@ merge.sh
 *TMVA-v4.2.0/
 *mmva
 *.tgz
-*weights/
+*tmva/weights/
 */V*/
 *datacards/
 *.exe

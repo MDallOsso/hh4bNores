@@ -1,4 +1,6 @@
 
+#define hh4bStructs_H
+
 //Struct and Functions for hh4b analysis macros
 //---------------------------------------------
 
@@ -8,57 +10,12 @@ float H_mass = 115.0;
 float dijetM_cut_low = 100.;
 float dijetM_cut_high = 150.;
 
-//Jet
-typedef struct{
-  float mass;
-  float pT;
-  float eta;
-  float phi;
-  float CosThSt;
-  float dR; 
-  float dPhi;
-  float dEta;
-  float dPhi_abs; //modulo
-  float dEta_abs; //modulo
-} diJet;
-
-//Jet
-typedef struct{
-  float CSV;
-  float mass;
-  float pT;
-  float eta;
-  float phi;
-} Jet;
-
 //Jet for plots
 typedef struct{
   TH1F* h;
   float norm;
 } Jet4Plot;
 
-
-//get_jetVector --> get TLorentzVector from Jet
-diJet get_diJet(TLorentzVector* diJ_P){ 
-  diJet diJ;
-  diJ.mass = diJ_P->M();
-  diJ.pT = diJ_P->Pt();
-  diJ.eta = diJ_P->Eta();
-  diJ.phi = diJ_P->Phi();
-  return diJ;
-}
-
-//get_jetVector --> get TLorentzVector from Jet
-TLorentzVector get_jetVector(Jet* jj){ 
-  TLorentzVector jetv;
-  jetv.SetPtEtaPhiM(jj->pT,jj->eta,jj->phi,jj->mass);
-  return jetv;
-}
-
-//cmp_CSV --> Jets sorting by CSV
-bool cmp_CSV(Jet jet1, Jet jet2){
-  return jet1.CSV > jet2.CSV;
-}
 
 //cmp_CMVA --> Jets sorting by CSV
 //bool cmp_CMVA(Jet jet1, Jet jet2){

@@ -4,9 +4,53 @@
 //--------------------
 class hh4b_kinSel{
 
+ std::string sample, opt, MCsample_RL;
+  bool isData; 
+  int finalIndex, maxEvents;
+
+//Jet
+typedef struct{
+  float mass;
+  float pT;
+  float eta;
+  float phi;
+  float CosThSt;
+  float dR; 
+  float dPhi;
+  float dEta;
+  float dPhi_abs; //modulo
+  float dEta_abs; //modulo
+} diJet;
+
+//Jet
+struct Jet{
+  float CSV;
+  float mass;
+  float pT;
+  float eta;
+  float phi;
+  bool operator<(const Jet& a) const {
+        return a.CSV < CSV;   //reverse sorting
+    }
+};
+
+//get_jetVector --> get TLorentzVector from Jet
+diJet get_diJet(TLorentzVector* diJ_P){ 
+  hh4b_kinSel::diJet diJ;
+  diJ.mass = diJ_P->M();
+  diJ.pT = diJ_P->Pt();
+  diJ.eta = diJ_P->Eta();
+  diJ.phi = diJ_P->Phi();
+  return diJ;
+}
+
   private:
 //variables
 //-------------------
+ 
+  TChain * fch = new TChain ("tree");
+ 
+
   ULong64_t evt;
   unsigned int run; //lumi
   int nPV, nJet, nGenH, nGenBfHafterISR;    
@@ -39,20 +83,20 @@ class hh4b_kinSel{
   int nRmaxOk = 0, nMCTruth =0, nCSVOk =0, nMatrCSVOk=0, nMixJets=0, errfJets=0;
   double Rave = 9999;
   int InTrue=99, In=99, jet4index=99;
-  vector<int> fJetsIndex;
+  std::vector<int> fJetsIndex;
 //----------
 
   //variables for histos
-  diJet H1, H2, HH; //Higgs and di-Higgs candidates per event
+  hh4b_kinSel::diJet H1, H2, HH; //Higgs and di-Higgs candidates per event
   TLorentzVector H1_P, H2_P, HH_P, met; //Higgs and di-Higgs candidates per event
   std::vector<TLorentzVector> jets_inAcc_P;   //jets in acc sorted by csv - per event
   std::vector<TLorentzVector> fJets_P; //final 4 jets per event
-  std::vector<Jet>  fJets_CSV; //final 4 jets sorted in CSV
-  std::vector<Jet>  fJets; //final 4 jets per event
-  std::vector<Jet>  aJets; //additional jets per event
-  std::vector<Jet>  jets_inAcc; //jet vector -> baseline in the event loop - per event
-  std::vector<Jet>  jets_all; //all jets after trigger - per event
-  Jet fJet1_CSV, fJet2_CSV, fJet3_CSV, fJet4_CSV;
+  std::vector<hh4b_kinSel::Jet>  fJets_CSV; //final 4 jets sorted in CSV
+  std::vector<hh4b_kinSel::Jet>  fJets; //final 4 jets per event
+  std::vector<hh4b_kinSel::Jet>  aJets; //additional jets per event
+  std::vector<hh4b_kinSel::Jet>  jets_inAcc; //jet vector -> baseline in the event loop - per event
+  std::vector<hh4b_kinSel::Jet>  jets_all; //all jets after trigger - per event
+  hh4b_kinSel::Jet fJet1_CSV, fJet2_CSV, fJet3_CSV, fJet4_CSV;
 
 //----------------------------
 
@@ -64,17 +108,20 @@ class hh4b_kinSel{
     float fJets3avgCSV, fJets3minCSV, fJets4avgCSV;
     float Centr;
 
+    void dokinSel();
     void anglesComputation();
-    void setBranches(bool, TTree*);   
-    bool readMatrix( std::string, std::string );
+    bool readFiles(TChain *);
+    void setBranches(TChain*);    //debug
+    bool readMatrix();
     float selectBestDiJets (int );
-    void fillHistos(bool );   
-    void writeHistos(std::string, bool );   
-    string jet4SelectionMethod(int );  
+    void fillHistos( );   
+    void writeHistos(std::string );   
+    std::string jet4SelectionMethod(int );  
     void createTree(TTree*);
     void printOutput(std::string, bool );
     //int dokinSel(std::string , bool , std::string , int =2, int =0, std::string ="");
-};
+
+     TLorentzVector get_jetVector(hh4b_kinSel::Jet* );
 
 
 // book Histos
@@ -261,3 +308,6 @@ TH2F *h2_HCSV_HRL_mass = new TH2F("h2_HCSV_HRL_mass", " mh mh; <m_{H_{RL}}> (GeV
 TH1F *h_Jets_CSV_all=new TH1F("h_Jets_CSV_all", "Jets_CSV_all; all jets CSV", 50, 0., 1.); //debug--
 
 //--------------------------------------
+
+
+};
