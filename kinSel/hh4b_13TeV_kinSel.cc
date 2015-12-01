@@ -4,7 +4,8 @@
 //   thanks Souvik Das (Univ. of Florida) & Caterina Vernieri (FNAL) 
 //    Sept 21th, 2015
 //     g++  `root-config --libs  --cflags` hh4b_13TeV_kinSel.cc -o kinSel
-//      ./kinSel BTagCSVRun2015C-D 1 pT20CSVL_def 2
+//      ./kinSel BTagCSVRun2015C-D 1 Trg3b_pT20CSVL_4CSV 2
+//       option: sample, isData, option, 4thSelectionMethod, maxEvents
 //----------------------------------------------------------------
 
 #define hh4b_kinSel_C
@@ -21,12 +22,9 @@
 #include <iomanip>
 #include <vector>
 
-using namespace std;
-
-// selection parameters:f
+// selection parameters:
 //-------------------------
-bool yesTrg_hh4bFinal = true; //only (QuadTrsiple || DoubleTriple)
-
+bool yesTrg_hh4bFinal = true; //only (QuadTriple || DoubleTriple)
 bool yesTrg_hh4bQuadTriple = false;
 bool yesTrg_hh4bDoubleTriple = false;
 bool yesTrg_hh4bQuadDouble = false; //for trg efficiency
@@ -44,33 +42,34 @@ float nJets_CSVcut = 3;  //number of Jets on which apply CSV cut
 static const int binPt = 10;
 static const int binCSV = 8;
 static const int binEta = 4;
+//--------------------------
 
 // environment
 //---------------
 //WARNING: CHANGE ME!!
-static const std::string dataframeworkVersionFld="V15/";
-static const std::string MCframeworkVersionFld="V14/";
+static const std::string dataframVer="V15";
+static const std::string MCframVer="V14";
 
 static const std::string utilsFld="../utils/";
-static const std::string dataFld="../data/"+dataframeworkVersionFld;
+static const std::string dataFld="../data/"+dataframVer+"/";
 static const std::string subdataFld=dataFld+"officialNtuples/";
-static const std::string MCFld="../data/"+MCframeworkVersionFld;
+static const std::string MCFld="../data/"+MCframVer+"/";
 static const std::string subMCFld=MCFld+"officialNtuples/";
+static const std::string step0Fld="../data/Step0/";
 
-static const std::string plotsFld="plots/"+dataframeworkVersionFld;   //dataVersion is the one that rules for next steps
+static const std::string plotsFld="plots/"+dataframVer+"/";   //dataVersion is the one that rules for next steps
 static const std::string matrixFld="jetsMatch_matrix/";
 
 // struct and common functions
 //#include "../utils/HelperFunctions.h"
 #include "hh4b_13TeV_kinSel.h" //Histos are here
-
 #include "../utils/hh4bStructs.h"
 
 //-------------
 int main (int argc, char **argv) {  //DEBUG!!!!
   
    std::string sample_, opt_, MCsample_RL_ = "";
-  bool isData_; 
+  bool isData_ ; 
   int finalIndex_ = 2, maxEvents_ = 0;
   
   for(int i=1; i<argc; i++) {
@@ -87,7 +86,7 @@ int main (int argc, char **argv) {  //DEBUG!!!!
   return 0;
 }
 
-hh4b_kinSel::hh4b_kinSel(std::string sam, bool isD, std::string op, int fi, int mx , std::string MC){
+hh4b_kinSel::hh4b_kinSel(std::string sam, bool isD, std::string op, int fi,  int mx , std::string MC){
  
   sample=sam;
   opt=op;
@@ -95,6 +94,11 @@ hh4b_kinSel::hh4b_kinSel(std::string sam, bool isD, std::string op, int fi, int 
   isData=isD; 
   finalIndex=fi;
   maxEvents=mx;
+
+  if(sample == "M-260" || sample == "SM") isSignal = true; //debug
+  else isSignal = false;
+
+  setSumW2();
 
 }
 
@@ -105,24 +109,28 @@ void hh4b_kinSel::dokinSel()
 //final index -> to decide which method to use for the 4th jet matching: 0 MCTruth, 1 matrix, 2 CSV, 3 minMass
 //MCsample_RL -> MC sample used to fill RL matrix
 {
-  //Histos
-  h_nPV->Sumw2();
-  //h_nPV_weighted->Sumw2();
+  //Histos -- optimize --> clone and empty...
+  //open input file
+//  if(!readFiles(inF)) return; //check--
+  std::string fname;  
+  if(isData) fname = step0Fld+"tree_Step0_"+dataframVer+"_"+sample+".root"; 
+  else fname = step0Fld+"tree_Step0_"+MCframVer+"_"+sample+".root"; 
+  TFile * inF = TFile::Open(fname.c_str());
+  if(!inF) return;
+  inF->cd();	
 
-  //read all Files
-  if(!readFiles(fch)) return; //check--
-
-  //TTree *tree=(TTree*)fch->LoadTree("tree");
+  TTree *tree=(TTree*)inF->Get("tree");
 
   //retrieve variables
-  setBranches(fch);
+  setBranches(tree);
 
   //std::cout<<Jet_pt[0]<<"  "<<Jet_pt[1]<<"  "<<Jet_pt[2]<< "   "<<std::endl;
 
   //output file
   std::string eve = "";
   if(maxEvents > 0) eve = "_" + std::to_string(maxEvents);
-  std::string outfilename=dataFld+"tree_Step1_"+sample+"_"+opt+eve+".root";  //dataVersion is the one that rules for next steps
+
+  outfilename=dataFld+"tree_Step1_"+sample+"_"+opt+eve+".root";  //dataVersion is the one that rules for next steps
   TFile *outfile=new TFile(outfilename.c_str(), "RECREATE"); //debug
 
   //output tree with brand new branches
@@ -131,7 +139,7 @@ void hh4b_kinSel::dokinSel()
 
   int nEvents;
   if(maxEvents>0) nEvents=maxEvents;
-  else nEvents=fch->GetEntries();
+  else nEvents=tree->GetEntries();
 
   //read Matrix to select 4th jet (only if RL method is selected)
   if(!readMatrix()) {
@@ -157,10 +165,10 @@ void hh4b_kinSel::dokinSel()
     bool foundHH=false; 
     nJets_InAcc = 0;
 
-    fch->GetEvent(i); //READ EVENT
+    tree->GetEvent(i); //READ EVENT
     h_nJets->Fill(nJet);
 
-    if(finalIndex==1 && !isData && i<=0.5*nEvents) continue; // to use only second part of the sample if Signal MC //to not run on events used to fill the matrix
+    if(finalIndex==1 && isSignal && i<=0.5*nEvents) continue; // to use only second part of the sample if Signal MC //to not run on events used to fill the matrix
     else {    
       std::vector<TLorentzVector> genB_P, genBISR_P;
       //if(!isData){  //to check jet matching
@@ -193,6 +201,14 @@ void hh4b_kinSel::dokinSel()
         if(HLT_BIT_DoubleTriple) ++nCut1;
         else continue;  //break loop if not right trigger path 
       } 
+      else if(yesTrg_hh4bQuadDouble){ 
+        if(HLT_BIT_QuadDouble) ++nCut1;
+        else continue;  //break loop if not right trigger path 
+      } 
+      else if(yesTrg_hh4bDoubleDouble){ 
+        if(HLT_BIT_DoubleDouble) ++nCut1;
+        else continue;  //break loop if not right trigger path 
+      } 
       h_nJets_InAcc->Fill(nJets_InAcc); //weightPU? - debug
 
       //-----------------------
@@ -211,6 +227,10 @@ void hh4b_kinSel::dokinSel()
         je.mass = Jet_mass[j];
         je.eta = Jet_eta[j];
         je.phi = Jet_phi[j];
+        je.chMult = Jet_chMult[j];
+        je.leadTrackPt = Jet_leadTrackPt[j];
+        TLorentzVector jett = get_jetVector(&je); //debug!!
+        je.Et = jett.Et();
         jets_all.push_back(je);  //all jets after trigger
         if ((fabs(Jet_eta[j])<Jet_eta_cut) && (Jet_pt[j]>Jet_pt_cut_low) ) {//debug //&& Jet_puId[j]>0 && && (Jet_id[j]>0)
           ++nJets_InAcc; 
@@ -226,17 +246,13 @@ void hh4b_kinSel::dokinSel()
       //----------------------------------------------
       // 4. jet sort in CSV + CSV cut on first 3 jets
       //----------------------------------------------
+      bool has4bTag = false; int bTag = 0;
       std::sort (jets_inAcc.begin(), jets_inAcc.end() );      // by csv - defined in declaration , cmp_CSV
-      if(jets_inAcc[nJets_CSVcut-1].CSV>CSV_cut) ++nCut4; //cut on jets sorted in btag
-      else continue;
-           /*c
-           //debug - check sorting --> OK!!
-            std::cout<< "size " << jet.size() << " ";                
-            for (int j=0; j<jet.size(); ++j){  
-             // std::cout<<jet[j].CSV << " ";
-              //std::cout<<jet[j].pT << " ";
-            }
-            cout << endl; */
+      if(jets_inAcc[1].CSV>CSV_cut){ ++bTag2; bTag = 2; };
+      if(jets_inAcc[2].CSV>CSV_cut){ ++bTag3; bTag = 3; };
+      if(jets_inAcc[3].CSV>CSV_cut){ ++bTag4; bTag = 4; };
+      if(bTag < nJets_CSVcut) continue; //cut on jets sorted in btag
+      ++nCut4;
 
           //fill jets vector (in acc sorted by csv):
           int NJetInAcc = jets_inAcc.size();
@@ -247,11 +263,11 @@ void hh4b_kinSel::dokinSel()
           }
           //.............
 
-//debug--- move....
+//debug--- move.... to check matching -- to be updated
           float dR=0;
           //check matching if MC --- DEBUG!!!!!!!!!!
           //-------------------------
-          if(!isData){ 
+          if(isSignal){ 
             // Match first 3 jets with b and fill deltaR
             //------------
             std::vector<TLorentzVector> genB_P_match;            
@@ -362,7 +378,7 @@ void hh4b_kinSel::dokinSel()
 
 	    jet4index = In;
             mAve = selectBestDiJets(jet4index); //choose best di-jets combination
-            if(mAve == -1){ ++nCut4b; continue;}; //4th jet CSV<0
+            //if(mAve == -1){ ++nCut4b; continue;}; //4th jet CSV<0
             
             h_M_matrix->Fill(mAve);
   	    h_HH_mass_matr->Fill(HH_P.M());
@@ -370,11 +386,11 @@ void hh4b_kinSel::dokinSel()
 
           // with MC truth
           // ----------------------------------       
-          if(!isData){
+          if(isSignal){
 	    jet4index = InTrue;
             nMCTruth++; //1 truth per event..
             mAve = selectBestDiJets(jet4index); //choose best di-jets combination
-            if(mAve == -1){ ++nCut4b; continue;}; //4th jet CSV<0
+            //if(mAve == -1){ ++nCut4b; continue;}; //4th jet CSV<0
             h_M_true->Fill(mAve);
   	    h_HH_mass_tr->Fill(HH_P.M());
           }
@@ -384,7 +400,7 @@ void hh4b_kinSel::dokinSel()
           jet4index=3;
           if(3==InTrue)nCSVOk++;
           mAve = selectBestDiJets(jet4index); //choose best di-jets combination
-          if(mAve == -1){ ++nCut4b; continue;}; //4th jet CSV<0
+          //if(mAve == -1){ ++nCut4b; continue;}; //4th jet CSV<0
           h_M_csv->Fill(mAve);
           h_HH_mass_csv->Fill(HH_P.M());
 
@@ -393,7 +409,7 @@ void hh4b_kinSel::dokinSel()
           jet4index=999;
              //to be implemented....
 
-          //now do it with the selected method (repetition..)        
+          //now do it with the selected method (repetition!!..)        
           foundHH = true;
           HHf++;                  
           jet4SelectionMethod(finalIndex); //to initialize jet4index
@@ -471,7 +487,7 @@ void hh4b_kinSel::dokinSel()
 	        }
 	      } // windows*/
 
-  	      //ELIPTICAL WINDOWS -- TO BE UNDERSTOOD
+  	      //ELIPTICAL WINDOWS -- TO BE IMPROVED
               if(withinElipse(H1_P.M(), H2_P.M())){
 	        nCut5b++;
                 h_H1_H2_massInReg2->Fill(H1_P.M(), H2_P.M());
@@ -480,13 +496,14 @@ void hh4b_kinSel::dokinSel()
 	      // windows
 
 	      outtree->Fill();	
+              //if(has4bTag) outtree4b->Fill();	non serve per ora
 
             }//if FOUND
     } // sample splitting
   } // Event loop
 
+
   // Some output (shell & log)  -- debug - put it into a function...
-  std::string logfilename;
   if(maxEvents!=0) logfilename = plotsFld+"log_"+sample+"_"+opt+"_"+std::to_string(maxEvents)+".dat";
   else logfilename = plotsFld+"log_"+sample+"_"+opt+".dat";
 //  printOutput(logfilename, isData);
@@ -498,10 +515,11 @@ void hh4b_kinSel::dokinSel()
   std::cout<< sample << " " << opt << " 4thJet:" << jet4SelectionMethod(finalIndex) << std::endl;
   std::cout<<"0. Input = "<< nCut0 << std::endl;
   std::cout<<"1. Trigger   = "<< nCut1 << " ,  " <<(float)nCut2/nCut0*100<<"%  " <<(float)nCut1/nCut0*100<<"%"<<std::endl;
-  //  std::cout<<"2. Number of events after Vtype     = "<< nCut2 << " ,  " <<(float)nCut2/nCut1*100<<"%  " <<(float)nCut2/nCut0*100<<"%"<<std::endl;
   std::cout<<"2. 4 Jets in Acc = "<< nCut3 << " ,  " <<(float)nCut3/nCut2*100<<"%  " <<(float)nCut3/nCut0*100<<"%"<<std::endl;
-  std::cout<<"3. 3 Jets CSV = "<< nCut4 << " ,  " <<(float)nCut4/nCut3*100<<"%  " <<(float)nCut4/nCut0*100<<"%"<<std::endl;
-  //  std::cout<<"4. 4th CSV>0  = "<< (nCut4-nCut4b) << " ,  " <<(float)(nCut4-nCut4b)/nCut4*100<<"%  " <<(float)(nCut4-nCut4b)/nCut0*100<<"%"<<std::endl;
+  std::cout<<"2JetsCSV    "<< bTag2 << "    " <<(float)bTag2/nCut3*100<< "    " <<(float)bTag2/nCut0*100<<std::endl;
+  std::cout<<"3JetsCSV    "<< bTag3 << "    " <<(float)bTag3/bTag2*100<< "    " <<(float)bTag3/nCut0*100<<std::endl;
+  std::cout<<"4JetsCSV    "<< bTag4 << "    " <<(float)bTag4/nCut3*100<< "    " <<(float)bTag4/nCut0*100<<std::endl;
+  std::cout<<"3. JetsCSVCut  "<< nCut4 << "    " <<(float)nCut4/nCut3*100<< "    " <<(float)nCut4/nCut0*100<<std::endl;
   std::cout<<"HHfound = "<< HHf << " ,  " <<(float)HHf/nCut4*100<<"%  " <<(float)HHf/nCut0*100<<"%"<<std::endl;
   //  std::cout<<"Number of events with only diJet1 in mass windows  = "<< (nCut5a-nCut5) << " ,  " << (float)(nCut5a-nCut5)/HHf*100<<"%  " << (float)(nCut5a-nCut5)/nCut0*100<<"%"<<std::endl;
   //  std::cout<<"Number of events in mass windows   = "<< nCut5 << " ,  " <<(float)nCut5/(nCut5a-nCut5)*100<<"%  " <<(float)nCut5/nCut0*100<<"%"<<std::endl;
@@ -510,7 +528,7 @@ void hh4b_kinSel::dokinSel()
 
   std::cout<<"# event with 'mixed' jets = " << nMixJets << std::endl;
   std::cout << "# error fJets: " << errfJets << std::endl << std::endl;
-  if(!isData){
+  if(isSignal){
     std::cout << "'ACCEPTANCE' (Ntrue/Nevents): " << (float)nMCTruth/nEvents*100 << std::endl;
     std::cout << "N true jets " << Ntr[0] << std::endl;
     std::cout << "nMCTruth " << nMCTruth << std::endl;
@@ -531,29 +549,40 @@ void hh4b_kinSel::dokinSel()
   ofs<<"Input    "<< nCut0 << std::endl;
   ofs<<"Trigger    "<< nCut1 << "    " <<(float)nCut2/nCut0*100<< "    " <<(float)nCut1/nCut0*100<<std::endl;
   ofs<<"4JetsInAcc    "<< nCut3 << "    " <<(float)nCut3/nCut2*100<< "    " <<(float)nCut3/nCut0*100<<std::endl;
-  ofs<<"3JetsCSV    "<< nCut4 << "    " <<(float)nCut4/nCut3*100<< "    " <<(float)nCut4/nCut0*100<<std::endl;
+  ofs<<"2JetsCSV    "<< bTag2 << "    " <<(float)bTag2/nCut3*100<< "    " <<(float)bTag2/nCut0*100<<std::endl;
+  ofs<<"3JetsCSV    "<< bTag3 << "    " <<(float)bTag3/bTag2*100<< "    " <<(float)bTag3/nCut0*100<<std::endl;
+  ofs<<"4JetsCSV    "<< bTag4 << "    " <<(float)bTag4/nCut3*100<< "    " <<(float)bTag4/nCut0*100<<std::endl;
+  ofs<<"JetsCSVCut  "<< nCut4 << "    " <<(float)nCut4/nCut3*100<< "    " <<(float)nCut4/nCut0*100<<std::endl;
   ofs<<"HH found     "<< HHf   << "    " <<(float)HHf/nCut4*100<< "    " <<(float)HHf/nCut0*100<<std::endl;
   ofs<<"In SR (elipse)    "<< nCut5b << "    " <<(float)nCut5b/HHf*100<< "    " <<(float)nCut5b/nCut0*100<<std::endl;
   ofs<<std::endl;
 
-  if(!isData){
+  if(isSignal){
     ofs << "'ACCEPTANCE' (Ntrue/Nevents): " << (float)nMCTruth/nEvents*100 << std::endl;
     ofs << "N true jets " << Ntr[0] <<std::endl;
     ofs << "nMCTruth " << nMCTruth << std::endl;
     ofs << std::endl;
   } 
   ofs.close();
-//------------
 
   //write tree and close
   outtree->Write();
-  outfile->Close(); 
+  //outtree4b->Write();
+  outfile->Close();
 
   //create Hist file and write histos
-  std::string histfilename;
-  if(maxEvents!=0) histfilename = plotsFld+"Histograms_"+sample+"_"+opt+"_"+std::to_string(maxEvents)+".root";
-  else histfilename = plotsFld+"Histograms_"+sample+"_"+opt+".root";
+  if(maxEvents!=0){
+    histfilename = plotsFld+"Histograms_"+sample+"_"+opt+"_"+std::to_string(maxEvents)+".root";
+  }
+  else {
+    histfilename = plotsFld+"Histograms_"+sample+"_"+opt+".root";
+  }
+
   writeHistos(histfilename);
+
+//------------
+
+
   std::cout<<"Wrote output files: "<<std::endl;
   std::cout<<histfilename<<std::endl;
   std::cout<<logfilename<<std::endl;
@@ -565,55 +594,24 @@ void hh4b_kinSel::dokinSel()
 hh4b_kinSel::~hh4b_kinSel(){
 }
 //---------------
-
-bool hh4b_kinSel::readFiles( TChain * fCh){
+/*
+bool hh4b_kinSel::readFiles(TFile * f){
 
   std::string fname, sam_;  
   bool matches = false;
-  //inputfilename =  "root://xrootd.ba.infn.it//store/user/arizzi/VHBBHeppyV14/GluGluToBulkGravitonToHHTo4B_M-260_narrow_13TeV-madgraph/VHBB_HEPPY_V14_GluGluToBulkGravitonToHHTo4B_M-260_narrow_13TeV-madgraph__RunIISpring15MiniAODv2-74X_mcRun2_asymptotic_v2-v1/151024_174851/0000/tree_1.root";
-  //inputfilename = cms.untracked.vstring("root://xrootd.unl.edu//store/user/arizzi/VHBBHeppyV15/BTagCSV/VHBB_HEPPY_V15_BTagCSV__Run2015D-05Oct2015-v1/151027_145921/0000/tree_1.root");
-  if(sample == "BTagCSVRun2015DPromptRecoV4" || sample == "BTagCSVRun2015C-D") {
-    sam_ = "BTagCSVRun2015DPromptRecoV4";
-    for(int i=1;i<9;i++){ //debug      
-      fname = subdataFld+"tree_"+sam_+"_"+std::to_string(i)+".root"; 
-      if(i==1) std::cout<<"Adding to Chain files "<< fname << " .." <<std::endl;
-      fCh->Add(fname.c_str());
-    }  
-    matches = true;
-  } 
-  if(sample == "BTagCSVRun2015DOct05" || sample == "BTagCSVRun2015C-D"){
-    sam_ = "BTagCSVRun2015DOct05";
-    for(int i=1;i<14;i++){ //debug      
-      fname = subdataFld+"tree_"+sam_+"_"+std::to_string(i)+".root"; 
-      if(i==1) std::cout<<"Adding to Chain files "<< fname << " .." <<std::endl;
-      fCh->Add(fname.c_str());
-    }  
-    matches = true;
-  }
-  if(sample == "BTagCSVRun2015C" || sample == "BTagCSVRun2015C-D"){
-    sam_ = "BTagCSVRun2015C";
-    fname = subdataFld+"tree_"+sam_+".root";       
-    fCh->Add(fname.c_str());
-    std::cout<<"Adding to Chain file "<< fname << std::endl;
-    matches = true;
-  }
-  if(sample == "M-260"){
-    fname = subMCFld+"tree_"+sample+".root"; 
-    fCh->Add(fname.c_str());
-    std::cout<<"Adding to Chain file "<< fname << std::endl;
-    matches = true;
-  }
-  if(!matches) { std::cout << "ERROR: sample not known" << std::endl; return false; }
-  return true;
-  //  TFile * f = TFile::Open(inputfilename.c_str());
-  //if(!fCh) return; //debug (return..)
-  //f->cd();	
+  if(isData) fname = step0Fld+"tree_Step0_"+dataframVer+"_"+sample+".root"; 
+  else fname = step0Fld+"tree_Step0_"+MCframVer+"_"+sample+".root"; 
+
+  f = TFile::Open(fname.c_str());
+  if(!f) return false;
+  f->cd();	
 }
+*/
 //---------------
 
 float hh4b_kinSel::selectBestDiJets(int k = 0){ //choose best di-jets combination, compute avg Higgs mass and initialize Higgs vector
 
-  if(jets_inAcc[k].CSV<=0.)  return -1.; //check to avoid underflow in 4th jet.
+ // if(jets_inAcc[k].CSV<=0.)  return -1.; //check to avoid underflow in 4th jet.
 
   fJetsIndex.clear(); //new at every call...
   float M12=0,M13=0,M14=0, M23=0, M24=0, M34=0;
@@ -756,24 +754,26 @@ void hh4b_kinSel::anglesComputation(){
 //---------------
 
 //Retrieve variables
-void hh4b_kinSel::setBranches( TChain* tree){
+void hh4b_kinSel::setBranches(TTree* tree){
   tree->SetBranchAddress("nprimaryVertices", &(nPV));
   tree->SetBranchAddress("Vtype", &(Vtype_));
-  tree->SetBranchAddress("evt",&evt); 
+  tree->SetBranchAddress("evt",&evt);
   tree->SetBranchAddress("run",&run);
 //  tree->SetBranchAddress("lumi",&lumi);
-  tree->SetBranchAddress("nJet",&nJet);              
-  tree->SetBranchAddress("Jet_id",&Jet_id);            
+  tree->SetBranchAddress("nJet",&nJet);
+  tree->SetBranchAddress("Jet_id",&Jet_id);
   tree->SetBranchAddress("Jet_puId",&Jet_puId);          
-  tree->SetBranchAddress("Jet_btagCSV",&Jet_btagCSV);       
-  tree->SetBranchAddress("Jet_pt",&Jet_pt);            
-  tree->SetBranchAddress("Jet_eta",&Jet_eta);           
-  tree->SetBranchAddress("Jet_phi",&Jet_phi);           
-  tree->SetBranchAddress("Jet_mass",&Jet_mass);          
-  tree->SetBranchAddress("met_pt",&met_pt);            
-  tree->SetBranchAddress("met_eta",&met_eta);           
+  tree->SetBranchAddress("Jet_btagCSV",&Jet_btagCSV);
+  tree->SetBranchAddress("Jet_pt",&Jet_pt);
+  tree->SetBranchAddress("Jet_eta",&Jet_eta);             
+  tree->SetBranchAddress("Jet_phi",&Jet_phi);            
+  tree->SetBranchAddress("Jet_mass",&Jet_mass);           
+  tree->SetBranchAddress("Jet_chMult",&Jet_chMult);
+  tree->SetBranchAddress("Jet_leadTrackPt",&Jet_leadTrackPt);
+  tree->SetBranchAddress("met_pt",&met_pt);
+  tree->SetBranchAddress("met_eta",&met_eta);
   tree->SetBranchAddress("met_phi",&met_phi);           
-  tree->SetBranchAddress("met_mass",&met_mass);       
+  tree->SetBranchAddress("met_mass",&met_mass);
 
   if(isData){
     tree->SetBranchAddress("HLT_BIT_HLT_QuadJet45_TripleBTagCSV0p67_v",&HLT_BIT_QuadTriple);
@@ -789,8 +789,8 @@ void hh4b_kinSel::setBranches( TChain* tree){
     tree->SetBranchAddress("HLT_BIT_HLT_DoubleJet90_Double30_TripleCSV0p5_v",&HLT_BIT_DoubleTriple);
     tree->SetBranchAddress("HLT_BIT_HLT_DoubleJet90_Double30_DoubleCSV0p5_v",&HLT_BIT_DoubleDouble);
     tree->SetBranchAddress("HLT_HH4bAll",&HLT_HH4bAll);
- 
-    tree->SetBranchAddress("nGenHiggsBoson",&nGenH);
+    if(isSignal){ //debug!
+     tree->SetBranchAddress("nGenHiggsBoson",&nGenH);
     tree->SetBranchAddress("GenHiggsBoson_pt",&GenH_pt);
     tree->SetBranchAddress("GenHiggsBoson_mass",&GenH_mass);
     tree->SetBranchAddress("GenHiggsBoson_eta",&GenH_eta);
@@ -809,48 +809,122 @@ void hh4b_kinSel::setBranches( TChain* tree){
     tree->SetBranchAddress("GenBQuarkFromHafterISR_pt",&GenBfHafterISR_pt);
     tree->SetBranchAddress("GenBQuarkFromHafterISR_eta",&GenBfHafterISR_eta);
     tree->SetBranchAddress("GenBQuarkFromHafterISR_phi",&GenBfHafterISR_phi);
-    tree->SetBranchAddress("GenBQuarkFromHafterISR_mass",&GenBfHafterISR_mass);  
+    tree->SetBranchAddress("GenBQuarkFromHafterISR_mass",&GenBfHafterISR_mass);   
+    }
   }
 }
 //---------------
 
 void hh4b_kinSel::createTree(TTree* outtree){
-
+  //copy Step0 tree -- DEBUG --> not good .. loop needed to fill all jet info...
   outtree->Branch("nprimaryVertices", &(nPV));
   outtree->Branch("Vtype", &(Vtype_));
   outtree->Branch("evt",&evt); 
   outtree->Branch("run",&run);
   outtree->Branch("nJet",&nJet);              
- // outtree->Branch("fJets","std::vector<hh4b_kinSel::Jet>",&fJets);
- // outtree->Branch("aJets","std::vector<hh4b_kinSel::Jet>",&aJets);
-//debug
-  outtree->Branch("fJet1","hh4b_kinSel::Jet",&fJet1_CSV);
-  outtree->Branch("fJet2","hh4b_kinSel::Jet",&fJet2_CSV);
-  outtree->Branch("fJet3","hh4b_kinSel::Jet",&fJet3_CSV);
-  outtree->Branch("fJet4","hh4b_kinSel::Jet",&fJet4_CSV);
+  outtree->Branch("Jet_id",Jet_id);            
+  outtree->Branch("Jet_puId",Jet_puId);          
+  outtree->Branch("Jet_btagCSV",Jet_btagCSV);       
+  outtree->Branch("Jet_pt",Jet_pt);            
+  outtree->Branch("Jet_eta",Jet_eta);           
+  outtree->Branch("Jet_phi",Jet_phi);           
+  outtree->Branch("Jet_mass",Jet_mass);          
+  outtree->Branch("Jet_chMult",Jet_chMult); 
+  outtree->Branch("Jet_leadTrackPt",Jet_leadTrackPt); 
+  outtree->Branch("met_pt",met_pt);            
+  outtree->Branch("met_eta",met_eta);           
+  outtree->Branch("met_phi",met_phi);           
+  outtree->Branch("met_mass",met_mass);       
+
+  if(isData){
+    outtree->Branch("HLT_QuadJet45_TripleBTagCSV0p67",&HLT_BIT_QuadTriple);
+    outtree->Branch("HLT_QuadJet45_DoubleBTagCSV0p67",&HLT_BIT_QuadDouble);
+    outtree->Branch("HLT_DoubleJet90_Double30_TripleBTagCSV0p67",&HLT_BIT_DoubleTriple);
+    outtree->Branch("HLT_DoubleJet90_Double30_DoubleBTagCSV0p67",&HLT_BIT_DoubleDouble);
+    outtree->Branch("HH4bAll",&HLT_HH4bAll);
+  }
+  else {
+    outtree->Branch("puWeight", &(weightPU));
+    outtree->Branch("HLT_QuadJet45_TripleCSV0p5",&HLT_BIT_QuadTriple);
+    outtree->Branch("HLT_QuadJet45_DoubleCSV0p5",&HLT_BIT_QuadDouble);
+    outtree->Branch("HLT_DoubleJet90_Double30_TripleCSV0p5",&HLT_BIT_DoubleTriple);
+    outtree->Branch("HLT_DoubleJet90_Double30_DoubleCSV0p5",&HLT_BIT_DoubleDouble);
+    outtree->Branch("HH4bAll",&HLT_HH4bAll);
+  }
+ //---------
+
+  //new variables
+  outtree->Branch("fJet1_mass",&fJet1_CSV.mass);
+  outtree->Branch("fJet1_pT",&fJet1_CSV.pT);
+  outtree->Branch("fJet1_eta",&fJet1_CSV.eta);
+  outtree->Branch("fJet1_phi",&fJet1_CSV.phi);
+  outtree->Branch("fJet1_CSV",&fJet1_CSV.CSV);
+  outtree->Branch("fJet1_Et",&fJet1_CSV.Et);
+  outtree->Branch("fJet1_chMult",&fJet1_CSV.chMult);
+  outtree->Branch("fJet1_leadTrackPt",&fJet1_CSV.leadTrackPt);
+  outtree->Branch("fJet2_mass",&fJet2_CSV.mass);
+  outtree->Branch("fJet2_pT",&fJet2_CSV.pT);
+  outtree->Branch("fJet2_eta",&fJet2_CSV.eta);
+  outtree->Branch("fJet2_phi",&fJet2_CSV.phi);
+  outtree->Branch("fJet2_CSV",&fJet2_CSV.CSV);
+  outtree->Branch("fJet2_Et",&fJet2_CSV.Et);
+  outtree->Branch("fJet2_chMult",&fJet2_CSV.chMult);
+  outtree->Branch("fJet2_leadTrackPt",&fJet2_CSV.leadTrackPt);
+  outtree->Branch("fJet3_mass",&fJet3_CSV.mass);
+  outtree->Branch("fJet3_pT",&fJet3_CSV.pT);
+  outtree->Branch("fJet3_eta",&fJet3_CSV.eta);
+  outtree->Branch("fJet3_phi",&fJet3_CSV.phi);
+  outtree->Branch("fJet3_CSV",&fJet3_CSV.CSV);
+  outtree->Branch("fJet3_Et",&fJet3_CSV.Et);
+  outtree->Branch("fJet3_chMult",&fJet3_CSV.chMult);
+  outtree->Branch("fJet3_leadTrackPt",&fJet3_CSV.leadTrackPt);
+  outtree->Branch("fJet4_mass",&fJet4_CSV.mass);
+  outtree->Branch("fJet4_pT",&fJet4_CSV.pT);
+  outtree->Branch("fJet4_eta",&fJet4_CSV.eta);
+  outtree->Branch("fJet4_phi",&fJet4_CSV.phi);
+  outtree->Branch("fJet4_CSV",&fJet4_CSV.CSV);
+  outtree->Branch("fJet4_Et",&fJet4_CSV.Et);
+  outtree->Branch("fJet4_chMult",&fJet4_CSV.chMult);
+  outtree->Branch("fJet4_leadTrackPt",&fJet4_CSV.leadTrackPt);
+
   outtree->Branch("fJets3avgCSV",&fJets3avgCSV);
   outtree->Branch("fJets3minCSV",&fJets3minCSV);
   outtree->Branch("fJets4avgCSV",&fJets4avgCSV);
   outtree->Branch("Centr",&Centr);
 
-  outtree->Branch("H1","diJet",&H1);
-  outtree->Branch("H2","diJet",&H2);
-  outtree->Branch("HH","diJet",&HH);  //debug
-  outtree->Branch("met","TLorentzVector",&met);
-
-  outtree->Branch("fJet3_pT",&fJet3_CSV.pT); //debug
-  outtree->Branch("fJet4_CSV",&fJet4_CSV.CSV); //debug
-  outtree->Branch("HH_mass",&HH.mass);  //debug
-  outtree->Branch("HH_dR",&HH.dR);  //debug
-  outtree->Branch("H1_cos",&H1.CosThSt);
-  outtree->Branch("H1_pT",&H1.pT);
-  outtree->Branch("H1_dR",&H1.dR);
-  outtree->Branch("H2_pT",&H2.pT);
-  outtree->Branch("H2_dR",&H2.dR);
+  //outtree->Branch("H1","diJet",&H1);
   outtree->Branch("H1_mass",&H1.mass);
-  outtree->Branch("H2_mass",&H2.mass);
+  outtree->Branch("H1_pT",&H1.pT);
+  outtree->Branch("H1_eta",&H1.eta);
+  outtree->Branch("H1_phi",&H1.phi);
+  outtree->Branch("H1_CosThSt",&H1.CosThSt);
+  outtree->Branch("H1_dR",&H1.dR);
+  outtree->Branch("H1_dPhi",&H1.dPhi);
+  outtree->Branch("H1_dEta",&H1.dEta);
+  outtree->Branch("H1_dPhi_abs",&H1.dPhi_abs);
+  outtree->Branch("H1_dEta_abs",&H1.dEta_abs);
 
-  //no Higgs variables (both Higgs together..)
+  outtree->Branch("H2_mass",&H2.mass);
+  outtree->Branch("H2_pT",&H2.pT);
+  outtree->Branch("H2_eta",&H2.eta);
+  outtree->Branch("H2_phi",&H2.phi);
+  outtree->Branch("H2_CosThSt",&H2.CosThSt);
+  outtree->Branch("H2_dR",&H2.dR);
+  outtree->Branch("H2_dPhi",&H2.dPhi);
+  outtree->Branch("H2_dEta",&H2.dEta);
+  outtree->Branch("H2_dPhi_abs",&H2.dPhi_abs);
+  outtree->Branch("H2_dEta_abs",&H2.dEta_abs);
+
+  outtree->Branch("HH_mass",&HH.mass);
+  outtree->Branch("HH_pT",&HH.pT);
+  outtree->Branch("HH_eta",&HH.eta);
+  outtree->Branch("HH_phi",&HH.phi);
+  outtree->Branch("HH_CosThSt",&HH.CosThSt);
+  outtree->Branch("HH_dR",&HH.dR);
+  outtree->Branch("HH_dPhi",&HH.dPhi);
+  outtree->Branch("HH_dEta",&HH.dEta);
+  outtree->Branch("HH_dPhi_abs",&HH.dPhi_abs);
+  outtree->Branch("HH_dEta_abs",&HH.dEta_abs);
 }
 //---------------
 
@@ -861,6 +935,10 @@ void hh4b_kinSel::fillHistos(){
      h_JetsAll_mass->Fill((*it).mass);
      h_JetsAll_eta->Fill((*it).eta);
      h_JetsAll_CSV->Fill((*it).CSV);
+     h_JetsAll_phi->Fill((*it).phi);
+     h_JetsAll_Et->Fill((*it).Et);
+     h_JetsAll_chMult->Fill((*it).chMult);
+     h_JetsAll_leadTrackPt->Fill((*it).leadTrackPt);
    }
    h_nJetsAll->Fill(jets_all.size());
 
@@ -869,14 +947,22 @@ void hh4b_kinSel::fillHistos(){
      h_JetsAcc_eta->Fill((*it).eta);
      h_JetsAcc_mass->Fill((*it).mass);
      h_JetsAcc_CSV->Fill((*it).CSV);
+     h_JetsAcc_phi->Fill((*it).phi);
+     h_JetsAcc_Et->Fill((*it).Et);
+     h_JetsAcc_chMult->Fill((*it).chMult);
+     h_JetsAcc_leadTrackPt->Fill((*it).leadTrackPt);
    }
    h_nJetsAcc->Fill(jets_inAcc.size());
 
-   for(unsigned int i=0;i<fJets.size();i++) {  //4 final jets
-     h_fJets_pT->Fill(fJets[i].pT);
-     h_fJets_eta->Fill(fJets[i].eta);
-     h_fJets_mass->Fill(fJets[i].mass);
-     h_fJets_CSV->Fill(fJets[i].CSV);
+   for(std::vector<hh4b_kinSel::Jet>::iterator it = fJets.begin() ; it != fJets.end(); ++it) {  //4 final jets
+     h_fJets_pT->Fill((*it).pT);
+     h_fJets_eta->Fill((*it).eta);
+     h_fJets_mass->Fill((*it).mass);
+     h_fJets_CSV->Fill((*it).CSV);
+     h_fJets_phi->Fill((*it).phi);
+     h_fJets_Et->Fill((*it).Et);
+     h_fJets_chMult->Fill((*it).chMult);
+     h_fJets_leadTrackPt->Fill((*it).leadTrackPt);
    }
    h_fJets_Centr->Fill(Centr); //sum over 4 jets
    h_nfJets->Fill(fJets.size());
@@ -886,6 +972,10 @@ void hh4b_kinSel::fillHistos(){
      h_aJets_eta->Fill((*it).eta);
      h_aJets_mass->Fill((*it).mass);
      h_aJets_CSV->Fill((*it).CSV);
+     h_aJets_phi->Fill((*it).phi);
+     h_aJets_Et->Fill((*it).Et);
+     h_aJets_chMult->Fill((*it).chMult);
+     h_aJets_leadTrackPt->Fill((*it).leadTrackPt);
    }
    h_naJets->Fill(aJets.size());
    //final jets sorted in CSV ---
@@ -904,7 +994,24 @@ void hh4b_kinSel::fillHistos(){
     h_fJet1_CSV->Fill(fJets_CSV[0].CSV);
     h_fJet2_CSV->Fill(fJets_CSV[1].CSV);
     h_fJet3_CSV->Fill(fJets_CSV[2].CSV);
-    h_fJet4_CSV->Fill(fJets_CSV[3].CSV);	
+    h_fJet4_CSV->Fill(fJets_CSV[3].CSV);
+    h_fJet1_phi->Fill(fJets_CSV[0].phi);
+    h_fJet2_phi->Fill(fJets_CSV[1].phi);
+    h_fJet3_phi->Fill(fJets_CSV[2].phi);
+    h_fJet4_phi->Fill(fJets_CSV[3].phi);	
+    h_fJet1_Et->Fill(fJets_CSV[0].Et);
+    h_fJet2_Et->Fill(fJets_CSV[1].Et);
+    h_fJet3_Et->Fill(fJets_CSV[2].Et);
+    h_fJet4_Et->Fill(fJets_CSV[3].Et);
+    h_fJet1_chMult->Fill(fJets_CSV[0].chMult);
+    h_fJet2_chMult->Fill(fJets_CSV[1].chMult);
+    h_fJet3_chMult->Fill(fJets_CSV[2].chMult);
+    h_fJet4_chMult->Fill(fJets_CSV[3].chMult);	
+    h_fJet1_leadTrackPt->Fill(fJets_CSV[0].leadTrackPt);
+    h_fJet2_leadTrackPt->Fill(fJets_CSV[1].leadTrackPt);
+    h_fJet3_leadTrackPt->Fill(fJets_CSV[2].leadTrackPt);
+    h_fJet4_leadTrackPt->Fill(fJets_CSV[3].leadTrackPt);	
+	
     h_fJets3avg_CSV->Fill(fJets3avgCSV);
     h_fJets3min_CSV->Fill(fJets3minCSV);
     h_fJets4avg_CSV->Fill(fJets4avgCSV);
@@ -973,22 +1080,38 @@ void hh4b_kinSel::writeHistos(std::string histfilename){
   h_JetsAll_pT->Write();
   h_JetsAll_eta->Write();
   h_JetsAll_CSV->Write();
+  h_JetsAll_phi->Write();
+  h_JetsAll_Et->Write();
+  h_JetsAll_chMult->Write();
+  h_JetsAll_leadTrackPt->Write();
   h_nJetsAcc->Write();
   h_JetsAcc_mass->Write();
   h_JetsAcc_pT->Write();
   h_JetsAcc_eta->Write();
   h_JetsAcc_CSV->Write();
+  h_JetsAcc_phi->Write();
+  h_JetsAcc_Et->Write();
+  h_JetsAcc_chMult->Write();
+  h_JetsAcc_leadTrackPt->Write();
   h_nfJets->Write();
   h_fJets_mass->Write();
   h_fJets_pT->Write();
   h_fJets_eta->Write();
   h_fJets_CSV->Write();
+  h_fJets_phi->Write();
+  h_fJets_Et->Write();
+  h_fJets_chMult->Write();
+  h_fJets_leadTrackPt->Write();
   h_fJets_Centr->Write();
   h_naJets->Write();
   h_aJets_mass->Write();
   h_aJets_pT->Write();
   h_aJets_eta->Write();
   h_aJets_CSV->Write();
+  h_aJets_phi->Write();
+  h_aJets_Et->Write();
+  h_aJets_chMult->Write();
+  h_aJets_leadTrackPt->Write();
   h_fJet1_mass->Write();
   h_fJet2_mass->Write();
   h_fJet3_mass->Write();
@@ -1005,6 +1128,22 @@ void hh4b_kinSel::writeHistos(std::string histfilename){
   h_fJet2_CSV->Write();
   h_fJet3_CSV->Write();
   h_fJet4_CSV->Write();
+  h_fJet1_phi->Write();
+  h_fJet2_phi->Write();
+  h_fJet3_phi->Write();
+  h_fJet4_phi->Write();
+  h_fJet1_Et->Write();
+  h_fJet2_Et->Write();
+  h_fJet3_Et->Write();
+  h_fJet4_Et->Write();
+  h_fJet1_chMult->Write();
+  h_fJet2_chMult->Write();
+  h_fJet3_chMult->Write();
+  h_fJet4_chMult->Write();
+  h_fJet1_leadTrackPt->Write();
+  h_fJet2_leadTrackPt->Write();
+  h_fJet3_leadTrackPt->Write();
+  h_fJet4_leadTrackPt->Write();
   h_fJets3avg_CSV->Write();
   h_fJets3min_CSV->Write();
   h_fJets4avg_CSV->Write();
@@ -1047,7 +1186,7 @@ void hh4b_kinSel::writeHistos(std::string histfilename){
   h_MET->Write();
   h_Cuts->Write();
 
-  if(!isData){
+  if(isSignal){
     h_jet1b_dr->Write();
     h_jet2b_dr->Write();
     h_jet3b_dr->Write();
@@ -1092,4 +1231,146 @@ TLorentzVector hh4b_kinSel::get_jetVector(Jet* jj){
    return 0;
 }*/
 
+void hh4b_kinSel::setSumW2(){ //debug -- better way to do it?
+
+  h_Cuts->Sumw2(); 
+  h_nJets->Sumw2();
+  h_nJets_InAcc->Sumw2();  
+  h_MET->Sumw2(); 
+
+    h_nJetsAll->Sumw2();
+  h_JetsAll_mass->Sumw2();
+  h_JetsAll_pT->Sumw2();
+  h_JetsAll_eta->Sumw2();
+  h_JetsAll_CSV->Sumw2();
+  h_JetsAll_phi->Sumw2();
+  h_JetsAll_Et->Sumw2();
+  h_JetsAll_chMult->Sumw2();
+  h_JetsAll_leadTrackPt->Sumw2();
+  h_nJetsAcc->Sumw2();
+  h_JetsAcc_mass->Sumw2();
+  h_JetsAcc_pT->Sumw2();
+  h_JetsAcc_eta->Sumw2();
+  h_JetsAcc_CSV->Sumw2();
+  h_JetsAcc_phi->Sumw2();
+  h_JetsAcc_Et->Sumw2();
+  h_JetsAcc_chMult->Sumw2();
+  h_JetsAcc_leadTrackPt->Sumw2();
+  h_nfJets->Sumw2();
+  h_fJets_mass->Sumw2();
+  h_fJets_pT->Sumw2();
+  h_fJets_eta->Sumw2();
+  h_fJets_CSV->Sumw2();
+  h_fJets_phi->Sumw2();
+  h_fJets_Et->Sumw2();
+  h_fJets_chMult->Sumw2();
+  h_fJets_leadTrackPt->Sumw2();
+  h_fJets_Centr->Sumw2();
+  h_naJets->Sumw2();
+  h_aJets_mass->Sumw2();
+  h_aJets_pT->Sumw2();
+  h_aJets_eta->Sumw2();
+  h_aJets_CSV->Sumw2();
+  h_aJets_phi->Sumw2();
+  h_aJets_Et->Sumw2();
+  h_aJets_chMult->Sumw2();
+  h_aJets_leadTrackPt->Sumw2();
+  h_fJet1_mass->Sumw2();
+  h_fJet2_mass->Sumw2();
+  h_fJet3_mass->Sumw2();
+  h_fJet4_mass->Sumw2();
+  h_fJet1_pT->Sumw2();
+  h_fJet2_pT->Sumw2();
+  h_fJet3_pT->Sumw2();
+  h_fJet4_pT->Sumw2();
+  h_fJet1_Eta->Sumw2();
+  h_fJet2_Eta->Sumw2();
+  h_fJet3_Eta->Sumw2();
+  h_fJet4_Eta->Sumw2();
+  h_fJet1_CSV->Sumw2();
+  h_fJet2_CSV->Sumw2();
+  h_fJet3_CSV->Sumw2();
+  h_fJet4_CSV->Sumw2();
+  h_fJet1_phi->Sumw2();
+  h_fJet2_phi->Sumw2();
+  h_fJet3_phi->Sumw2();
+  h_fJet4_phi->Sumw2();
+  h_fJet1_Et->Sumw2();
+  h_fJet2_Et->Sumw2();
+  h_fJet3_Et->Sumw2();
+  h_fJet4_Et->Sumw2();
+  h_fJet1_chMult->Sumw2();
+  h_fJet2_chMult->Sumw2();
+  h_fJet3_chMult->Sumw2();
+  h_fJet4_chMult->Sumw2();
+  h_fJet1_leadTrackPt->Sumw2();
+  h_fJet2_leadTrackPt->Sumw2();
+  h_fJet3_leadTrackPt->Sumw2();
+  h_fJet4_leadTrackPt->Sumw2();
+  h_fJets3avg_CSV->Sumw2();
+  h_fJets3min_CSV->Sumw2();
+  h_fJets4avg_CSV->Sumw2();
+
+  h_H_mass->Sumw2(); 
+  h_H_pT->Sumw2(); 
+  h_H_Phi->Sumw2(); 
+  h_H_Eta->Sumw2(); 
+  h_H_CosThSt->Sumw2(); 
+  h_H1_mass->Sumw2(); 
+  h_H1_pT->Sumw2(); 
+  h_H1_Phi->Sumw2(); 
+  h_H1_Eta->Sumw2(); 
+  h_H1_CosThSt->Sumw2(); 
+  h_H1_deltaR->Sumw2(); 
+  h_H1_deltaPhi->Sumw2(); 
+  h_H1_deltaEta->Sumw2();
+  h_H1_deltaPhi_abs ->Sumw2(); 
+  h_H1_deltaEta_abs->Sumw2(); 
+  h_H1_deltaPhiVSpT->Sumw2(); 
+  h_H2_mass->Sumw2(); 
+  h_H2_pT->Sumw2(); 
+  h_H2_Phi->Sumw2(); 
+  h_H2_Eta->Sumw2(); 
+  h_H2_CosThSt->Sumw2(); 
+  h_H2_deltaR->Sumw2(); 
+  h_H2_deltaPhi->Sumw2(); 
+  h_H2_deltaEta->Sumw2();
+
+  h_H2_deltaPhi_abs ->Sumw2(); 
+  h_H2_deltaEta_abs->Sumw2(); 
+  h_H2_deltaPhiVSpT->Sumw2(); 
+
+  h_HH_mass->Sumw2();
+  h_HH_pT->Sumw2();
+  h_HH_Eta->Sumw2();
+  h_HH_Phi->Sumw2();
+  h_HH_deltaR->Sumw2();
+  h_HH_deltaPhi->Sumw2();
+  h_HH_deltaEta->Sumw2();
+  h_H1_H2_mass->Sumw2();
+  h_HH_massInReg->Sumw2();
+  h_HH_pTInReg->Sumw2();
+  h_H1_H2_massInReg->Sumw2();
+  h_H1_H2_massInReg2->Sumw2();
+  h_H1_H2_massInReg3->Sumw2();
+  h_MET->Sumw2();
+  h_Cuts->Sumw2();
+
+  if(isSignal){
+    h_jet1b_dr->Sumw2();
+    h_jet2b_dr->Sumw2();
+    h_jet3b_dr->Sumw2();
+    h_jet4b_dr->Sumw2();
+    h_nGenH->Sumw2();
+    h_genH_pT->Sumw2();
+    h_genH_mass->Sumw2();
+    h_genHH_mass->Sumw2();
+    h_genH1_mass->Sumw2();
+    h_genH2_mass->Sumw2();
+    h_genB1Jets_DR->Sumw2();
+    h_genBfH1_DR->Sumw2();
+    h_genBfH2_DR->Sumw2();
+  }
+
+}
 

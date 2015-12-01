@@ -1,4 +1,5 @@
 *.slo
+*.sh
 *.lo
 *.o
 *.obj

@@ -1,0 +1,21 @@
+
+STEP 0
+--> in Step0 folder. Clone of Official Tree with less branches.
+
+Vx 
+--> vhbb-heppy framework version.
+
+
+--------------------
+OFFICIAL NTUPLES ARE NOT TRANSFERABLE WITH PHEDEX
+
+DRAFT SOLUTION:
+- use hadd to copy and merge files from T2 Pisa
+  insert cmd in hadd_.sh file
+  then re-do hadd to get a single file
+
+for QCD bkg:
+- read directly from Pisa --> use file list.
+
+FINAL SOLUTION:
+Step0 code that read directly from Pisa

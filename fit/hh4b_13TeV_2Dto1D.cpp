@@ -16,10 +16,10 @@
 //WARNING: CHANGE ME!!
 static const std::string outoption="";
 static const std::string frameworkVersionFld = "V15/";   //V13
-static const float scaleFactorSig = 1.; //11,54 = 34.3*0.58*0.58 //was 2.01461e-4 -- DEBUG  --what to be ued?
+static const float scaleFactorSig = 1.; // 11,54 = 34.3*0.58*0.58    //was 2.01461e-4 -- DEBUG
 // 13TeV XS:
 // X->HH narrow M-260 --> 
-// nonres HH SM --> 
+// nonres HH SM --> 34.3 fb
 float scaleFactorBkg = 0; //computed inside code
 
 static const std::string resultsFld="results/"+frameworkVersionFld;
@@ -29,10 +29,10 @@ static const std::string outFile= resultsFld+"toCombine"+outoption+".root";
 int main()
 {
   TFile * apro = new TFile(inputFile.c_str(), "READ");
-  TH2D * sig_templ = (TH2D*)apro->Get("MC_BDT_vs_mass_4CSV");
-  TH2D * bkg_templ = (TH2D*)apro->Get("BDT_vs_mass_3CSV");
-  TH2D * test = (TH2D*)apro->Get("BDT_vs_mass_4CSV");
-  TH2D * Twobtag = (TH2D*)apro->Get("BDT_vs_mass_2CSV");
+  TH2D * sig_templ = (TH2D*)apro->Get("MC_BDT_vs_mass_4CSV");   //4btag MC
+  TH2D * bkg_templ = (TH2D*)apro->Get("BDT_vs_mass_3CSV");      //3btag Data
+  TH2D * test = (TH2D*)apro->Get("BDT_vs_mass_4CSV");           //4btag Data
+  TH2D * Twobtag = (TH2D*)apro->Get("BDT_vs_mass_2CSV");        //2btag Data
 
   // Apply Signal Scale Factor (f'=Lbkg/Lsig)
  //--------------------------------------------

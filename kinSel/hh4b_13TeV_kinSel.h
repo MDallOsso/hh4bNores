@@ -5,10 +5,10 @@
 class hh4b_kinSel{
 
  std::string sample, opt, MCsample_RL;
-  bool isData; 
+  bool isData, isSignal; 
   int finalIndex, maxEvents;
 
-//Jet
+//diJet
 typedef struct{
   float mass;
   float pT;
@@ -29,6 +29,9 @@ struct Jet{
   float pT;
   float eta;
   float phi;
+  float Et; //to be computed
+  int chMult; //charged track multeplicity (PFJet)
+  float leadTrackPt; 
   bool operator<(const Jet& a) const {
         return a.CSV < CSV;   //reverse sorting
     }
@@ -48,12 +51,11 @@ diJet get_diJet(TLorentzVector* diJ_P){
 //variables
 //-------------------
  
-  TChain * fch = new TChain ("tree");
- 
+ // TChain * fch = new TChain ("tree");
 
   ULong64_t evt;
   unsigned int run; //lumi
-  int nPV, nJet, nGenH, nGenBfHafterISR;    
+  int nPV, nJet, nGenH, nGenBfHafterISR, Jet_chMult[25];    
   float weightPU, Vtype_, met_pt, met_eta, met_phi, met_mass, ht;
   float HLT_HH4bAll, HLT_BIT_QuadTriple, HLT_BIT_QuadDouble, HLT_BIT_DoubleTriple, HLT_BIT_DoubleDouble;
 //float Jet_btagCMVA[25], Jet_rawPt[25],Jet_mcPt[25],Jet_mcFlavour[25]
@@ -61,13 +63,14 @@ diJet get_diJet(TLorentzVector* diJ_P){
 //float Jet_btagBProb[25], Jet_btagnew[25],Jet_btagCSVV0[25], Jet_chHEF[25],Jet_neHEF[25],Jet_chEmEF[25],Jet_neEmEF[25]
 //float Jet_chMult[25],Jet_leadTrackPt[25],Jet_mcEta[25],Jet_mcPhi[25],Jet_mcM[25];
   float Jet_id[25],Jet_puId[25],Jet_btagCSV[25];
-  float Jet_pt[25],Jet_eta[25],Jet_phi[25],Jet_mass[25];  
+  float Jet_pt[25],Jet_eta[25],Jet_phi[25],Jet_mass[25], Jet_leadTrackPt[25];  
   float GenH_pt[2], GenH_mass[2], GenH_eta[2], GenH_phi[2], GenH_status[2];
   float nGenBfH[4], GenBfH_pdgId[4],GenBfH_pt[4],GenBfH_eta[4],GenBfH_phi[4],GenBfH_mass[4], GenBfH_status[4], GenBfH_charge[4];
   float GenBfHafterISR_pdgId[4],GenBfHafterISR_pt[4],GenBfHafterISR_eta[4],GenBfHafterISR_phi[4],GenBfHafterISR_mass[4];
 
 //debug...
   int nCut0=0, nCut1=0, nCut2=0, nCut3=0, nCut4=0, nCut4a=0, nCut4b=0, nCut5=0, nCut5a=0, nCut5b=0, HHf=0;
+  int bTag2=0, bTag3=0, bTag4=0;
   int nJets_InAcc=0;
   int effB1=0, effB2=0;
   int effBH1_wind=0, effBH2_wind=0;
@@ -84,6 +87,8 @@ diJet get_diJet(TLorentzVector* diJ_P){
   double Rave = 9999;
   int InTrue=99, In=99, jet4index=99;
   std::vector<int> fJetsIndex;
+
+  std::string histfilename, logfilename, outfilename;
 //----------
 
   //variables for histos
@@ -101,17 +106,18 @@ diJet get_diJet(TLorentzVector* diJ_P){
 //----------------------------
 
   public:
-    hh4b_kinSel(std::string , bool , std::string , int =2, int =0, std::string ="");
+    hh4b_kinSel(std::string , bool , std::string , int , int , std::string );
 // void    doKinSel(std::string , bool , std::string , int =2, int =0, std::string ="");
     ~hh4b_kinSel();
 
     float fJets3avgCSV, fJets3minCSV, fJets4avgCSV;
     float Centr;
 
+    void setSumW2();
     void dokinSel();
     void anglesComputation();
-    bool readFiles(TChain *);
-    void setBranches(TChain*);    //debug
+   // bool readFiles(TTree*);
+    void setBranches(TTree*);    //debug
     bool readMatrix();
     float selectBestDiJets (int );
     void fillHistos( );   
@@ -142,15 +148,21 @@ TH1F *h_nJetsAll = new TH1F("h_nJetsAll", "all jets; # All jets", 18, 0., 18.);
 TH1F *h_JetsAll_mass = new TH1F("h_JetsAll_mass", "all jets; Jets All m (GeV/c^{2})", 100, 0., 150.);
 TH1F *h_JetsAll_pT = new TH1F("h_JetsAll_pT", "all jets; Jets All p_{T} (GeV/c)", 100, 0., 900.);
 TH1F *h_JetsAll_eta = new TH1F("h_JetsAll_eta","all jets; Jets All #eta", 100, -4., 4.);
-TH1F *h_JetsAll_Phi= new TH1F("h_JetsAll_Phi", "all jets; Jets All #phi", 100, -3.5, 3.5);
 TH1F *h_JetsAll_CSV = new TH1F("h_JetsAll_CSV", "all jets; Jets All CSV", 100, 0., 1.);
+TH1F *h_JetsAll_phi=new TH1F("h_JetsAll_phi", "all jets; Jets All #phi", 100, -3.5, 3.5);
+TH1F *h_JetsAll_Et=new TH1F("h_JetsAll_Et", "all jets; Jets All E_{T} (GeV)", 100, 0., 700.);
+TH1F *h_JetsAll_chMult=new TH1F("h_JetsAll_chMult", "all jets; Jets All  chMult", 50, 0., 50.);
+TH1F *h_JetsAll_leadTrackPt = new TH1F("h_JetsAll_leadTrackPt", "all jets; Jets All  leadTr p_{T} (GeV/c)", 100, 0., 700.);
 
 TH1F *h_nJetsAcc = new TH1F("h_nJetsAcc", "jets in acc.; # jets in Acc", 18, 0., 18.);
 TH1F *h_JetsAcc_mass = new TH1F("h_JetsAcc_mass", "jets in acc.; Jets in Acc m (GeV/c^{2})", 100, 0., 150.);
 TH1F *h_JetsAcc_pT = new TH1F("h_JetsAcc_pT", "jets in acc.; Jets in Acc p_{T} (GeV/c)", 100, 0., 900.);
 TH1F *h_JetsAcc_eta = new TH1F("h_JetsAcc_eta","jets in acc.; Jets in Acc #eta", 100, -4., 4.);
-TH1F *h_JetsAcc_Phi= new TH1F("h_JetsAcc_Phi", "jets in acc.; Jets in Acc #phi", 100, -3.5, 3.5);
 TH1F *h_JetsAcc_CSV = new TH1F("h_JetsAcc_CSV", "jets in acc.; Jets in Acc CSV", 100, 0., 1.);
+TH1F *h_JetsAcc_phi=new TH1F("h_JetsAcc_phi", "jets in acc.; Jets in Acc #phi", 100, -3.5, 3.5);
+TH1F *h_JetsAcc_Et=new TH1F("h_JetsAcc_Et", "jets in acc.; Jets in Acc E_{T} (GeV)", 100, 0., 700.);
+TH1F *h_JetsAcc_chMult=new TH1F("h_JetsAcc_chMult", "jets in acc.; Jets in Acc chMult", 50, 0., 50.);
+TH1F *h_JetsAcc_leadTrackPt = new TH1F("h_JetsAcc_leadTrackPt", "jets in acc.; Jets in Acc leadTr p_{T} (GeV/c)", 100, 0., 700.);
 //TH1F *h_JetsAcc_Centr = new TH1F("h_Jets_Centrality", "Jets_Centrality; allJets C", 100, 0., 1.);
 //TH1F *h_JetsAcc_HT = new TH1F("h_Jets_HT", "h_Jets_HT; allJets HT (GeV/c)", 50, 0., 900.);
 
@@ -159,6 +171,10 @@ TH1F *h_fJets_mass = new TH1F("h_fJets_mass", "final jets; Final Jets m (GeV/c^{
 TH1F *h_fJets_pT = new TH1F("h_fJets_pT", "final jets; Final Jets p_{T} (GeV/c)", 100, 0., 700.);
 TH1F *h_fJets_eta = new TH1F("h_fJets_eta","final jets; Final Jets #eta", 100, -4., 4.);
 TH1F *h_fJets_CSV = new TH1F("h_fJets_CSV", "final jets; Final Jets CSV", 100, 0., 1.);
+TH1F *h_fJets_phi=new TH1F("h_fJets_phi", "final jets; Final Jets #phi", 100, -3.5, 3.5);
+TH1F *h_fJets_Et=new TH1F("h_fJets_Et", "final jets; Final Jets E_{T} (GeV)", 100, 0., 700.);
+TH1F *h_fJets_chMult=new TH1F("h_fJets_chMult", "final jets; Final Jets chMult", 50, 0., 50.);
+TH1F *h_fJets_leadTrackPt = new TH1F("h_fJets_leadTrackPt", "final jets; Final Jets leadTr p_{T} (GeV/c)", 100, 0., 700.);
 TH1F *h_fJets_Centr = new TH1F("h_fJets_Centr", "final jets; Final Jets C", 100, 0., 1.);
 
 //sorted in CSV ----
@@ -176,8 +192,25 @@ TH1F *h_fJet3_Eta=new TH1F("h_fJet3_Eta", "Jet 3; jet3 #eta", 100, -4., 4.);
 TH1F *h_fJet4_Eta=new TH1F("h_fJet4_Eta", "Jet 4; jet4 #eta", 100, -4., 4.);
 TH1F *h_fJet1_CSV=new TH1F("h_fJet1_CSV", "Jet 1; jet1 CSV", 100, 0., 1.);
 TH1F *h_fJet2_CSV=new TH1F("h_fJet2_CSV", "Jet 2; jet2 CSV", 100, 0., 1.);
-TH1F *h_fJet3_CSV=new TH1F("h_fJet3_CSV", "Jet 3; jet3 CSV", 100, 0., 1.);
+TH1F *h_fJet3_CSV=new TH1F("h_fJet3_CSV", "Jet 3; jet3 CSV", 100, 0., 1.); 
 TH1F *h_fJet4_CSV=new TH1F("h_fJet4_CSV", "Jet 4; jet4 CSV", 100, 0., 1.);
+TH1F *h_fJet1_phi=new TH1F("h_fJet1_phi", "Jet 1; jet1 #phi", 100, -3.5, 3.5);
+TH1F *h_fJet2_phi=new TH1F("h_fJet2_phi", "Jet 2; jet2 #phi", 100, -3.5, 3.5);
+TH1F *h_fJet3_phi=new TH1F("h_fJet3_phi", "Jet 3; jet3 #phi", 100, -3.5, 3.5);
+TH1F *h_fJet4_phi=new TH1F("h_fJet4_phi", "Jet 4; jet4 #phi", 100, -3.5, 3.5);
+TH1F *h_fJet1_Et=new TH1F("h_fJet1_Et", "Jet 1; jet1 E_{T} (GeV)", 100, 0., 700.);
+TH1F *h_fJet2_Et=new TH1F("h_fJet2_Et", "Jet 2; jet2 E_{T} (GeV)", 100, 0., 700.);
+TH1F *h_fJet3_Et=new TH1F("h_fJet3_Et", "Jet 3; jet3 E_{T} (GeV)", 100, 0., 700.);
+TH1F *h_fJet4_Et=new TH1F("h_fJet4_Et", "Jet 4; jet4 E_{T} (GeV)", 100, 0., 700.);
+TH1F *h_fJet1_chMult=new TH1F("h_fJet1_chMult", "Jet 1; jet1 chMult", 50, 0., 50.);
+TH1F *h_fJet2_chMult=new TH1F("h_fJet2_chMult", "Jet 2; jet2 chMult", 50, 0., 50.);
+TH1F *h_fJet3_chMult=new TH1F("h_fJet3_chMult", "Jet 3; jet3 chMult", 50, 0., 50.);
+TH1F *h_fJet4_chMult=new TH1F("h_fJet4_chMult", "Jet 4; jet4 chMult", 50, 0., 50.);
+TH1F *h_fJet1_leadTrackPt = new TH1F("h_fJet1_leadTrackPt", "Jet 1; jet1 leadTr p_{T} (GeV/c)", 100, 0., 700.);
+TH1F *h_fJet2_leadTrackPt = new TH1F("h_fJet2_leadTrackPt", "Jet 2; jet2 leadTr p_{T} (GeV/c)", 100, 0., 700.);
+TH1F *h_fJet3_leadTrackPt = new TH1F("h_fJet3_leadTrackPt", "Jet 3; jet3 leadTr p_{T} (GeV/c)", 100, 0., 700.);
+TH1F *h_fJet4_leadTrackPt = new TH1F("h_fJet4_leadTrackPt", "Jet 4; jet4 leadTr p_{T} (GeV/c)", 100, 0., 700.);
+
 TH1F *h_fJets3avg_CSV=new TH1F("h_fJets3avg_CSV", "first 3 Jets; avg 3 jets CSV", 100, 0., 1.);
 TH1F *h_fJets3min_CSV=new TH1F("h_fJets3min_CSV", "first 3 Jets; min 3 jets CSV", 100, 0., 1.);
 TH1F *h_fJets4avg_CSV=new TH1F("h_fJets4avg_CSV", "4 Jets; avg 4 jets CSV", 100, 0., 1.);
@@ -187,6 +220,10 @@ TH1F *h_aJets_mass = new TH1F("h_aJets_mass", "additional jets; additional Jets 
 TH1F *h_aJets_pT = new TH1F("h_aJets_pT", "additional jets; additional Jets p_{T} (GeV/c)", 100, 0., 900.);
 TH1F *h_aJets_eta = new TH1F("h_aJets_eta","additional jets; additional Jets #eta", 100, -4., 4.);
 TH1F *h_aJets_CSV = new TH1F("h_aJets_CSV", "additional jets; additional Jets CSV", 100, 0., 1.);
+TH1F *h_aJets_phi=new TH1F("h_aJets_phi", "additional jets; additional Jets #phi", 100, -3.5, 3.5);
+TH1F *h_aJets_Et=new TH1F("h_aJets_Et", "additional jets; additional Jets E_{T} (GeV)", 100, 0., 700.);
+TH1F *h_aJets_chMult=new TH1F("h_aJets_chMult", "additional jets; additional Jets chMult", 50, 0., 50.);
+TH1F *h_aJets_leadTrackPt = new TH1F("h_aJets_leadTrackPt", "additional jets; additional Jets leadTr p_{T} (GeV/c)", 100, 0., 700.);
 
 TH1F *h_H_mass=new TH1F("h_H_mass", "all H candidates; allH m (GeV/c^{2})", 200, 0., 1000.);
 TH1F *h_H_pT=new TH1F("h_H_pT", "all H candidates; allH p_{T} (GeV/c)", 50, 0., 900.);
@@ -201,7 +238,7 @@ TH1F *h_H1_Eta=new TH1F("h_H1_Eta", "H1 candidates; H1 #eta", 100, -6., 6.);
 TH1F *h_H1_CosThSt=new TH1F("h_H1_CosTheta*", "H1 candidates; H1 |cos#theta*|", 50, 0., 1.);
 TH1F *h_H1_deltaR = new TH1F("h_H1_DR","H1 candidates; H1 #DeltaR", 100, 0., 7.);
 TH1F *h_H1_deltaPhi = new TH1F("h_H1_DPhi","H1 candidates; H1 #Delta#phi", 100, -3.5, 3.5);
-TH1F *h_H1_deltaEta = new TH1F("h_H1_DEta","H1 candidates; H1 #Delta#eta", 100, -6., 6.);
+TH1F *h_H1_deltaEta = new TH1F("h_H1_DEta","H1 candidates; H1 #Delta#eta", 100, -6., 6.); 
 TH1F *h_H1_deltaPhi_abs = new TH1F("h_H1_DPhi_abs","H1 candidates; H1 |#Delta#phi|", 50, 0., 3.5);
 TH1F *h_H1_deltaEta_abs = new TH1F("h_H1_DEta_abs","H1 candidates; H1 |#Delta#eta|", 50, 0., 6.);
 TH2F *h_H1_deltaPhiVSpT = new TH2F("h_H1_deltaPhiVSpT", "H1 candidates; H1 #Delta#phi; H1 p_{T} (GeV/c)", 200, 0., 3.5, 200, 0., 600.);
@@ -218,7 +255,7 @@ TH1F *h_H2_deltaPhi_abs = new TH1F("h_H2_DPhi_abs","H2 candidates; H2 |#Delta#ph
 TH1F *h_H2_deltaEta_abs = new TH1F("h_H2_DEta_abs","H2 candidates; H2 |#Delta#eta|", 50, 0., 6.);
 TH2F *h_H2_deltaPhiVSpT = new TH2F("h_H2_deltaPhiVSpT", "H2 candidates; H2 #Delta#phi; H2 p_{T} (GeV/c)", 200, 0., 3.5, 200, 0., 600.);
 
-TH1F *h_HH_mass = new TH1F("h_HH_mass"," di-Higgs candidates; HH m (GeV/c^{2})" , 100, 0., 1500.); 
+TH1F *h_HH_mass = new TH1F("h_HH_mass"," di-Higgs candidates; HH m (GeV/c^{2})" , 100, 0., 1500.);
 TH1F *h_HH_pT=new TH1F("h_HH_pT", "di-Higgs candidates; HH p_{T} (GeV/c)", 50, 0., 900.);
 TH1F *h_HH_Eta=new TH1F("h_HH_Eta", "di-Higgs candidates; HH #eta", 100, -6., 6.);
 TH1F *h_HH_Phi=new TH1F("h_HH_Phi", "di-Higgs candidates; HH #phi", 100, -3.5, 3.5);
@@ -231,7 +268,7 @@ TH1F *h_HH_deltaEta_abs = new TH1F("h_HH_DEta_abs","di-Higgs candidates; HH |#De
 TH2F *h_H1_H2_mass = new TH2F("h_H1_H2_mass", " mh mh; m_{H_{lead}} (GeV/c^{2}); m_{H_{sublead}} (GeV/c^{2})", 300, 0., 600., 300, 0., 600.);
 
 TH1F *h_HH_massInReg = new TH1F("h_HH_massInReg","di-Higgs candidates in SR; m (GeV/c^{2}) SR" , 200, 0., 1500.);
-TH1F *h_HH_pTInReg=new TH1F("h_HH_pTInReg", "di-Higgs candidates in SR; p_{T} (GeV/c) SR", 50, 0., 900.);
+TH1F *h_HH_pTInReg=new TH1F("h_HH_pTInReg", "di-Higgs candidates in SR; p_{T} (GeV/c) SR", 50, 0., 900.); 
 TH2F *h_H1_H2_massInReg = new TH2F("h_H1_H2_massInReg", " all comb if min(#sigma (#delta m)^{2}) SR; m (GeV/c^{2}) SR; m (GeV/c^{2}) SR ", 300, 0., 600., 300, 0., 600.);
 TH2F *h_H1_H2_massInReg2 = new TH2F("h_H1_H2_massInReg2", " all comb if min(#sigma (#delta m)^{2}) SR2; m (GeV/c^{2}) SR; m (GeV/c^{2}) SR ", 300, 0., 600., 300, 0., 600.);
 TH2F *h_H1_H2_massInReg3 = new TH2F("h_H1_H2_massInReg3", " all comb if min(#sigma (#delta m)^{2}) SR3; m (GeV/c^{2}) SR; m (GeV/c^{2}) SR ", 300, 0., 600., 300, 0., 600.);
@@ -246,8 +283,8 @@ TH1F *h_HH_massNorm_diff=new TH1F("h_HH_massNorm_diff", "|#Deltam| between Higgs
 TH1F *h_genHH_mass=new TH1F("h_genHH_mass", "Generator HH mass; m_{genHH} (GeV/c^{2})", 100, 0., 1000.);
 TH1F *h_genH1_mass=new TH1F("h_genH1_mass", "Generator H1 mass; m_{genH1} (GeV/c^{2})", 100, 0., 1000.);
 TH1F *h_genH2_mass=new TH1F("h_genH2_mass", "Generator H2 mass; m_{genH2} (GeV/c^{2})", 100, 0., 1000.);
-TH1F *h_nGenH=new TH1F("h_nGenH", "# generated H per event; # genH", 8, 0., 8.);
-TH1F *h_genH_pT=new TH1F("h_genH_pT", "Generate H p_{T}; p_{T} (GeV/c)", 50, 0., 900.);
+TH1F *h_nGenH=new TH1F("h_nGenH", "# generated H per event; # genH", 8, 0., 8.);  
+TH1F *h_genH_pT=new TH1F("h_genH_pT", "Generate H p_{T}; p_{T} (GeV/c)", 50, 0., 900.); 
 TH1F *h_genH_mass=new TH1F("h_genH_mass", "Generate H mass; mass (GeV/c^{2})", 100, 50., 180.);
 
 TH1F *h_genB1Jets_DR = new TH1F("h_genB1Jets_DeltaR","h_genB1Jets_DeltaR; #DeltaR", 100, 0., 7.);
@@ -266,7 +303,7 @@ TH1F *  h_jet2b_dr = new TH1F("h_jet2b_dr","h_jet2b_dr; jet-parton #DeltaR", 100
 TH1F *  h_jet3b_dr = new TH1F("h_jet3b_dr","h_jet3b_dr; jet-parton #DeltaR", 100, 0., 1.);
 TH1F *  h_jet4b_dr = new TH1F("h_jet4b_dr","h_jet4b_dr; jet-parton #DeltaR", 100, 0., 1.);
 TH1F *  h_jet4b_drMatrix = new TH1F("h_jet4b_drMatrix","h_jet4b_dr; jet-parton #DeltaR", 100, 0., 1.);
-TH1F *  h_jet4b_drAll = new TH1F("h_jet4b_drAll","h_jet4b_dr; jet-parton #DeltaR", 100, 0., 1.);
+TH1F *  h_jet4b_drAll = new TH1F("h_jet4b_drAll","h_jet4b_dr; jet-parton #DeltaR", 100, 0., 1.); 
 TH1F *  h_jet4b_drNotMatched = new TH1F("h_jet4b_drNotMatched","h_jet4b_dr; jet-parton #DeltaR", 100, 0., 1.);
 
 //da eliminare....

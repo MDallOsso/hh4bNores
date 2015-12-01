@@ -43,7 +43,8 @@ void domake2D(std::string inputFile, std::string inputFile_CR, std::string input
   TH2F *MC_mass_scatt_4CSV = new TH2F("MC_BDT_vs_mass_4CSV", "MC BDT vs mass (4btag)", bdtbins, 0.25, 0.75, massbins, 40, 500); 
   TH2F *MC_mass_scatt_3CSV = new TH2F("MC_BDT_vs_mass_3CSV", "MC BDT vs mass (3btag)", bdtbins, 0.25, 0.75, massbins, 40, 500);
   TH2F *MC_mass_scatt_ALL = new TH2F("MC_BDT_vs_mass_TEST", "MC BDT vs mass (ALL)", bdtbins, 0.25, 0.75, massbins, 40, 500); 
-  TH2F *diff = new TH2F("twothree_btag_Residuals", "2-3 btag Residuals", bdtbins, 0.25, 0.75, massbins, 40, 500);
+  TH2F *diff23 = new TH2F("twothree_btag_Residuals", "2-3 btag Residuals", bdtbins, 0.25, 0.75, massbins, 40, 500);
+  TH2F *diff34 = new TH2F("btag_Residuals_3vs4", "btag Residuals 3vs4", bdtbins, 0.25, 0.75, massbins, 40, 500);
   gStyle->SetOptStat(0);
   mass_scatt_ALL->GetXaxis()->SetTitle("BDT response"); mass_scatt_ALL->GetYaxis()->SetTitle("h mass");
   mass_scatt_3CSV->GetXaxis()->SetTitle("BDT response"); mass_scatt_3CSV->GetYaxis()->SetTitle("h mass");
@@ -103,12 +104,13 @@ void domake2D(std::string inputFile, std::string inputFile_CR, std::string input
     if(d_csv >= CSVcut) mass_scatt_4CSV->Fill(d_BDT, mass);
   }
 
-  //check 2btag vs 3 btag - fill residuals
+  //check 2btag vs 3 btag - fill residuals 
   //------------------------------------
   int TOTbins = mass_scatt_2CSV->GetXaxis()->GetNbins()*mass_scatt_2CSV->GetYaxis()->GetNbins();
-  float delta, unc;
+  float delta23, unc23, delta34, unc34;
   float N2 = mass_scatt_2CSV->GetEntries();
   float N3 = mass_scatt_3CSV->GetEntries();
+  float N4 = mass_scatt_3CSV->GetEntries();
   float bin2, bin3, bin4;
   float test;
   for(int i=1; i<=TOTbins; i++) {
@@ -116,17 +118,27 @@ void domake2D(std::string inputFile, std::string inputFile_CR, std::string input
     bin3 = mass_scatt_3CSV->GetBinContent(i);
     bin4 = mass_scatt_4CSV->GetBinContent(i);
     if (bin2 == 0 || bin3 == 0) {
-      delta = 0.0; 
-      unc = 1.1;
+      delta23 = 0.0; 
+      unc23 = 1.1;
     }
     else { 
-      delta = bin2 - (bin3*(N2/N3));  //WARNING!!
-      unc = sqrt(bin2 + (N2/N3)*(N2/N3)*bin3 + (bin3/N3)*(bin3/N3)*N2 + ((bin3*N2)/(N3*N3))*((bin3*N2)/(N3*N3))*N3 );
+      delta23 = bin2 - (bin3*(N2/N3)); // -- deprecated now!
+      unc23 = sqrt(bin2 + (N2/N3)*(N2/N3)*bin3 + (bin3/N3)*(bin3/N3)*N2 + ((bin3*N2)/(N3*N3))*((bin3*N2)/(N3*N3))*N3 );
       if (bin4 != 0) {test = ((((N3/N2)*bin2)-bin3)/bin3)*sqrt(bin4);}
       if (bin4 == 0) {test = 0.0;}
     }
-    diff->SetBinContent(i,delta/unc);
+    diff23->SetBinContent(i,delta23/unc23);
     mass_scatt_TEST->SetBinContent(i,test);
+
+    if (bin3 == 0 || bin4 == 0) {
+      delta34 = 0.0; 
+      unc34 = 1.1;
+    }
+    else { 
+      delta34 = bin3 - (bin4*(N3/N4));
+      unc34 = sqrt(bin3 + (N3/N4)*(N3/N4)*bin4 + (bin4/N4)*(bin4/N4)*N3 + ((bin4*N3)/(N4*N4))*((bin4*N3)/(N4*N4))*N4 );
+    }
+    diff34->SetBinContent(i,delta34/unc34);
   }
 
   //3btag - 4btag MC
@@ -162,7 +174,8 @@ void domake2D(std::string inputFile, std::string inputFile_CR, std::string input
   MC_mass_scatt_3CSV->Write();
   MC_mass_scatt_4CSV->Write();
   MC_mass_scatt_ALL->Write();
-  diff->Write();
+  diff23->Write();
+  diff34->Write();
   outhisto->Close();
 
   return;
