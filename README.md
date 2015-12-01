@@ -2,18 +2,26 @@
 macros and code for non resonant hh->4b analysis in CMS Run2.
 
 -- work in progress... update for V15 vhbb ntuples --
+
 -- V12 -> Apr15 -- freezed and used with Phys14 samples.
+
 -- V13 -> Sept15
+
 -- V15 -> Nov15
+
 
 BASELINE:
 
 - step0  -> Step0 ntuples production from vhbb official ntuples.
+
 	    no trigger request or kin cuts. Jets level info only.
 
 - kinSel -> Step1 ntuples production: trigger, kinematical cuts, jets coupling
+
             OUTPUT: Step1 ntuples in 'data' folder + Histos (.root) in 'plots' folder + log in 'plots' folder 
+
             hh4b_13TeV_kinSel.cc -> produce Step1 ntuples
+
             Plot_kinSel_new.cc -> produce final plots from Step1 histos.
 
 ADDITIONAL CODE:
